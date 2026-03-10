@@ -1,3 +1,5 @@
+//IMU fusion + heading
+
 #include "stable.h"
 #include <math.h>
 
