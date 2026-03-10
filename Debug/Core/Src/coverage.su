@@ -1,0 +1,2 @@
+../Core/Src/coverage.c:9:6:COVERAGE_Init	4	static
+../Core/Src/coverage.c:14:6:COVERAGE_Update	32	static

@@ -1,52 +1,68 @@
 #include "mapping.h"
+#include <math.h>
 
-#define CELL_SIZE 0.25f   // meters per grid cell
-
-static uint8_t grid[MAP_SIZE_X][MAP_SIZE_Y];
-
-void MAP_Init(void)
+static int world_to_map_x(float x)
 {
-    for(int x=0;x<MAP_SIZE_X;x++)
+    return (int)(x / MAP_RESOLUTION) + MAP_SIZE_X / 2;
+}
+
+static int world_to_map_y(float y)
+{
+    return (int)(y / MAP_RESOLUTION) + MAP_SIZE_Y / 2;
+}
+
+void Map_Init(Map *map)
+{
+    for(int i=0;i<MAP_SIZE_X;i++)
     {
-        for(int y=0;y<MAP_SIZE_Y;y++)
+        for(int j=0;j<MAP_SIZE_Y;j++)
         {
-            grid[x][y] = CELL_UNKNOWN;
+            map->grid[i][j] = CELL_UNKNOWN;
         }
+    }
+
+    map->robot_x = 0;
+    map->robot_y = 0;
+    map->robot_theta = 0;
+}
+
+void Map_UpdateRobotPose(Map *map, float x, float y, float theta)
+{
+    map->robot_x = x;
+    map->robot_y = y;
+    map->robot_theta = theta;
+}
+
+void Map_UpdateUltrasonic(Map *map, float distance, float sensor_angle)
+{
+    float global_angle = map->robot_theta + sensor_angle;
+
+    float hit_x = map->robot_x + distance * cosf(global_angle);
+    float hit_y = map->robot_y + distance * sinf(global_angle);
+
+    int cell_x = world_to_map_x(hit_x);
+    int cell_y = world_to_map_y(hit_y);
+
+    if(cell_x >=0 && cell_x < MAP_SIZE_X &&
+       cell_y >=0 && cell_y < MAP_SIZE_Y)
+    {
+        map->grid[cell_x][cell_y] = CELL_OCCUPIED;
+    }
+
+    int robot_cell_x = world_to_map_x(map->robot_x);
+    int robot_cell_y = world_to_map_y(map->robot_y);
+
+    if(robot_cell_x >=0 && robot_cell_x < MAP_SIZE_X &&
+       robot_cell_y >=0 && robot_cell_y < MAP_SIZE_Y)
+    {
+        map->grid[robot_cell_x][robot_cell_y] = CELL_FREE;
     }
 }
 
-void MAP_Update(RobotPose pose)
+uint8_t Map_GetCell(Map *map, int x, int y)
 {
-    int gx = (int)(pose.x / CELL_SIZE);
-    int gy = (int)(pose.y / CELL_SIZE);
+    if(x <0 || x >= MAP_SIZE_X || y <0 || y >= MAP_SIZE_Y)
+        return CELL_OCCUPIED;
 
-    if(gx < 0 || gx >= MAP_SIZE_X)
-        return;
-
-    if(gy < 0 || gy >= MAP_SIZE_Y)
-        return;
-
-    grid[gx][gy] = CELL_CLEANED;
-}
-
-uint8_t MAP_GetCell(int x, int y)
-{
-    if(x < 0 || x >= MAP_SIZE_X)
-        return CELL_UNKNOWN;
-
-    if(y < 0 || y >= MAP_SIZE_Y)
-        return CELL_UNKNOWN;
-
-    return grid[x][y];
-}
-
-void MAP_SetObstacle(int x, int y)
-{
-    if(x < 0 || x >= MAP_SIZE_X)
-        return;
-
-    if(y < 0 || y >= MAP_SIZE_Y)
-        return;
-
-    grid[x][y] = CELL_OBSTACLE;
+    return map->grid[x][y];
 }

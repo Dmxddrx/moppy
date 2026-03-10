@@ -1,0 +1,2 @@
+../Core/Src/slam_lite.c:6:6:SLAM_Init	4	static
+../Core/Src/slam_lite.c:10:6:SLAM_Update	32	static

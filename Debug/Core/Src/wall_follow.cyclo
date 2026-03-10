@@ -1,0 +1,2 @@
+../Core/Src/wall_follow.c:5:6:WALLFOLLOW_Init	1
+../Core/Src/wall_follow.c:9:6:WALLFOLLOW_Update	1
