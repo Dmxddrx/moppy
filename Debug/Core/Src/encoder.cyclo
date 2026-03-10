@@ -1,0 +1,4 @@
+../Core/Src/encoder.c:6:6:ENC_Init	1
+../Core/Src/encoder.c:14:6:ENC_Update	1
+../Core/Src/encoder.c:20:9:ENC_GetCount	1
+../Core/Src/encoder.c:25:7:ENC_GetSpeed	1

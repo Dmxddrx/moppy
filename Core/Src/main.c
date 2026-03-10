@@ -121,7 +121,7 @@ int main(void)
   MX_SPI1_Init();
   MX_TIM1_Init();
   /* USER CODE BEGIN 2 */
-
+  GENERAL_Init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -129,7 +129,8 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+	GENERAL_Update();
+	// motion / motor control / mapping logic
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
