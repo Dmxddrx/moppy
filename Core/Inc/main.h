@@ -79,6 +79,10 @@ void Error_Handler(void);
 #define ENC_A_GPIO_Port GPIOE
 #define ENC_B_Pin GPIO_PIN_11
 #define ENC_B_GPIO_Port GPIOE
+#define OLED_SCL_Pin GPIO_PIN_10
+#define OLED_SCL_GPIO_Port GPIOB
+#define OLED_SDA_Pin GPIO_PIN_11
+#define OLED_SDA_GPIO_Port GPIOB
 #define MOTOR4_PWM_Pin GPIO_PIN_12
 #define MOTOR4_PWM_GPIO_Port GPIOD
 #define MOTOR5_PWM_Pin GPIO_PIN_13
