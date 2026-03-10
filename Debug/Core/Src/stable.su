@@ -1,0 +1,3 @@
+../Core/Src/stable.c:11:6:STABLE_Init	4	static
+../Core/Src/stable.c:18:6:STABLE_Update	72	static
+../Core/Src/stable.c:53:13:STABLE_GetOrientation	40	static
