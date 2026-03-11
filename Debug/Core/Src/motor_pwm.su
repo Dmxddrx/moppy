@@ -1,3 +1,4 @@
-../Core/Src/motor_pwm.c:31:6:MOTORPWM_Init	16	static
-../Core/Src/motor_pwm.c:42:6:MOTORPWM_Update	32	static
-../Core/Src/motor_pwm.c:69:9:MOTORPWM_Get	16	static
+../Core/Src/motor_pwm.c:35:6:MOTORPWM_Init	16	static
+../Core/Src/motor_pwm.c:52:6:MOTORPWM_SetOne	16	static
+../Core/Src/motor_pwm.c:64:6:MOTORPWM_Update	32	static
+../Core/Src/motor_pwm.c:91:9:MOTORPWM_Get	16	static

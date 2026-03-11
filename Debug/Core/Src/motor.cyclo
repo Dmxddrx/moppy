@@ -1,3 +1,3 @@
-../Core/Src/motor.c:15:6:MOTOR_Init	1
-../Core/Src/motor.c:20:6:MOTOR_SetDir	4
-../Core/Src/motor.c:40:6:MOTOR_Set	1
+../Core/Src/motor.c:56:6:MOTOR_Init	1
+../Core/Src/motor.c:61:6:MOTOR_SetDir	4
+../Core/Src/motor.c:85:6:MOTOR_Set	2

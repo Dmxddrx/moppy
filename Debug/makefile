@@ -62,7 +62,7 @@ main-build: Moppy.elf secondary-outputs
 
 # Tool invocations
 Moppy.elf Moppy.map: $(OBJS) $(USER_OBJS) C:\Users\DMXHP\Documents\Programing_Files_IoT\STM32CubeIDE\workspace_2.0.0\STM32F407VET6\Moppy\STM32F407VETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "Moppy.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\DMXHP\Documents\Programing_Files_IoT\STM32CubeIDE\workspace_2.0.0\STM32F407VET6\Moppy\STM32F407VETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Moppy.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+	arm-none-eabi-gcc -o "Moppy.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\DMXHP\Documents\Programing_Files_IoT\STM32CubeIDE\workspace_2.0.0\STM32F407VET6\Moppy\STM32F407VETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Moppy.map" -Wl,--gc-sections -static -u _printf_float --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

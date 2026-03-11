@@ -77,18 +77,12 @@ void Error_Handler(void);
 #define SR04_ECHO3_GPIO_Port GPIOA
 #define SR04_ECHO4_Pin GPIO_PIN_3
 #define SR04_ECHO4_GPIO_Port GPIOA
-#define SPI1_SCK_Pin GPIO_PIN_5
-#define SPI1_SCK_GPIO_Port GPIOA
-#define MOTOR1_PWM_Pin GPIO_PIN_6
-#define MOTOR1_PWM_GPIO_Port GPIOA
-#define MOTOR2_PWM_Pin GPIO_PIN_7
-#define MOTOR2_PWM_GPIO_Port GPIOA
 #define M2_BIN1_Pin GPIO_PIN_4
 #define M2_BIN1_GPIO_Port GPIOC
 #define M2_BIN2_Pin GPIO_PIN_5
 #define M2_BIN2_GPIO_Port GPIOC
-#define MOTOR3_PWM_Pin GPIO_PIN_0
-#define MOTOR3_PWM_GPIO_Port GPIOB
+#define M3_PWM_Pin GPIO_PIN_0
+#define M3_PWM_GPIO_Port GPIOB
 #define M6_BIN2_Pin GPIO_PIN_7
 #define M6_BIN2_GPIO_Port GPIOE
 #define ENC1_A_Pin GPIO_PIN_9
@@ -99,12 +93,12 @@ void Error_Handler(void);
 #define OLED_SCL_GPIO_Port GPIOB
 #define OLED_SDA_Pin GPIO_PIN_11
 #define OLED_SDA_GPIO_Port GPIOB
-#define MOTOR4_PWM_Pin GPIO_PIN_12
-#define MOTOR4_PWM_GPIO_Port GPIOD
-#define MOTOR5_PWM_Pin GPIO_PIN_13
-#define MOTOR5_PWM_GPIO_Port GPIOD
-#define MOTOR6_PWM_Pin GPIO_PIN_14
-#define MOTOR6_PWM_GPIO_Port GPIOD
+#define M4_PWM_Pin GPIO_PIN_12
+#define M4_PWM_GPIO_Port GPIOD
+#define M5_PWM_Pin GPIO_PIN_13
+#define M5_PWM_GPIO_Port GPIOD
+#define M6_PWM_Pin GPIO_PIN_14
+#define M6_PWM_GPIO_Port GPIOD
 #define ENC2_A_Pin GPIO_PIN_6
 #define ENC2_A_GPIO_Port GPIOC
 #define ENC2_B_Pin GPIO_PIN_7
@@ -129,10 +123,6 @@ void Error_Handler(void);
 #define M3_AIN1_GPIO_Port GPIOD
 #define M3_AIN2_Pin GPIO_PIN_6
 #define M3_AIN2_GPIO_Port GPIOD
-#define SPI1_MISO_Pin GPIO_PIN_4
-#define SPI1_MISO_GPIO_Port GPIOB
-#define SPI1_MOSI_Pin GPIO_PIN_5
-#define SPI1_MOSI_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 

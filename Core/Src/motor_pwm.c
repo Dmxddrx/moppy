@@ -2,11 +2,19 @@
 #include "main.h"
 #include <stdlib.h>
 
+/* ================================================================
+   MOTOR_PWM.C
+   TIM3 CH1/2/3 → Motors 1-3  (PA6, PA7, PB0)
+   TIM4 CH1/2/3 → Motors 4-6  (PD12, PD13, PD14)
+
+   Both timers: Prescaler=3, ARR=999, 84MHz → 21kHz PWM
+   PWM range: 0 – 999
+   ================================================================ */
+
 // declare timers defined in main.c
 extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim4;
 
-#define PWM_MAX 1000
 #define PWM_STEP 10  // change per update for smooth acceleration
 
 static int16_t current_pwm[MOTOR_MAX] = {0};
@@ -20,12 +28,8 @@ static TIM_HandleTypeDef *pwm_htim[MOTOR_MAX] =
 
 static uint32_t pwm_channel[MOTOR_MAX] =
 {
-	TIM_CHANNEL_1,
-	TIM_CHANNEL_2,
-	TIM_CHANNEL_3,
-	TIM_CHANNEL_1,
-	TIM_CHANNEL_2,
-	TIM_CHANNEL_3
+	TIM_CHANNEL_1, TIM_CHANNEL_2, TIM_CHANNEL_3,
+	TIM_CHANNEL_1, TIM_CHANNEL_2, TIM_CHANNEL_3
 };
 
 void MOTORPWM_Init(void)
@@ -36,6 +40,24 @@ void MOTORPWM_Init(void)
         __HAL_TIM_SET_COMPARE(pwm_htim[i], pwm_channel[i], 0);
         current_pwm[i] = 0;
     }
+}
+
+/* ------------------------------------------------------------------
+   MOTORPWM_SetOne — set single motor immediately, no ramping.
+   Called by MOTOR_Set() for direct per-motor control.
+   FIX: replaces the non-existent MOTOR_PWM_Set() that motor.c
+        was calling before.
+   value: 0 – PWM_MAX (999)
+------------------------------------------------------------------ */
+void MOTORPWM_SetOne(uint8_t motor_index, int16_t value)
+{
+    if(motor_index >= MOTOR_MAX) return;
+    if(value > PWM_MAX) value = PWM_MAX;
+    if(value < 0)       value = 0;
+
+    current_pwm[motor_index] = value;
+    __HAL_TIM_SET_COMPARE(pwm_htim[motor_index],
+                          pwm_channel[motor_index], value);
 }
 
 // Smoothly ramp to target PWM

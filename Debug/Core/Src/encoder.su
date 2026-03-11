@@ -1,4 +1,4 @@
-../Core/Src/encoder.c:12:6:ENCODER_Init	8	static
-../Core/Src/encoder.c:22:6:ENCODER_Update	16	static
-../Core/Src/encoder.c:36:9:ENCODER_GetCount	16	static
-../Core/Src/encoder.c:44:6:ENCODER_Reset	16	static
+../Core/Src/encoder.c:29:6:ENCODER_Init	8	static
+../Core/Src/encoder.c:39:6:ENCODER_Update	16	static
+../Core/Src/encoder.c:52:9:ENCODER_GetCount	16	static
+../Core/Src/encoder.c:59:6:ENCODER_Reset	16	static

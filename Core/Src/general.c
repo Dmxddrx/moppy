@@ -1,313 +1,271 @@
 #include "general.h"
 #include <stdio.h>
+#include <stdlib.h>
 
-extern I2C_HandleTypeDef hi2c1;
+/* ================================================================
+   GENERAL.C — Top-level robot loop combinator
 
+   Pipeline:
+     SENSORS
+       → STABLE   (IMU fusion — roll/pitch/yaw)
+       → ODOM     (wheel odometry — x, y, theta)
+       → SLAM     (yaw correction — fuse IMU into odom theta)
+       → COVERAGE (planner — target heading + speed)
+       → MOTION   (heading PID — per-wheel speed)
+       → MOTOR    (PWM output)
+   ================================================================ */
+
+extern I2C_HandleTypeDef hi2c1;   /* MPU6500 + HMC5883L + ADS1115 */
+extern I2C_HandleTypeDef hi2c2;   /* OLED                         */
+
+/* ----------------------------------------------------------------
+   TICKS_TO_METERS
+   HC-020K disc: 20 slots per revolution
+   Encoder mode TI1+TI2 on a single-channel sensor = 20 counts/rev
+   Wheel diameter: measure yours and substitute.
+   Example: wheel ⌀ 65mm → circumference = π × 0.065 = 0.2042m
+            0.2042 / 20 = 0.01021 m/tick
+   !! Measure your actual wheel and update this value !!
+---------------------------------------------------------------- */
+#define TICKS_TO_METERS   0.01021f
+
+/* Motor output clamp — must match ARR = 999 */
+#define MOTOR_OUT_MAX     999
+
+/* HC-SR04 obstacle threshold (cm) */
+#define OBSTACLE_CM       20.0f
+
+/* ----------------------------------------------------------------
+   Sensor snapshot — updated every loop
+---------------------------------------------------------------- */
 typedef struct {
-    int16_t encoder_counts[2];
-    uint8_t ir_values[4];
-    float ultrasonic_distances[4];
+    int32_t enc[2];
+    uint8_t ir[4];
+    float   us_cm[4];
 } RobotState;
 
-RobotState robot;
+static RobotState robot;
 
-static uint8_t oled_page = 0;
-static uint32_t last_oled_switch = 0;
-
-static MPU6500_RawData imu_raw;
+static MPU6500_RawData  imu_raw;
 static HMC5883L_RawData mag_raw;
 
-extern float heading;
-extern float robot_x;
-extern float robot_y;
-extern int motion_state;
-extern int coverage_percent;
-extern int map_cells;
+/* Globals exposed for OLED debug */
+float heading          = 0.0f;
+float robot_x          = 0.0f;
+float robot_y          = 0.0f;
+int   motion_state     = 0;
+int   coverage_percent = 0;
+int   map_cells        = 0;
 
-char line[32];
+/* Track commanded direction per wheel for encoder sign correction */
+static uint8_t motor_dir[2] = {MOTOR_FORWARD, MOTOR_FORWARD};
 
 
-// Initialize all modules
+/* ================================================================
+   GENERAL_Init
+   ================================================================ */
 void GENERAL_Init(void)
 {
     MOTOR_Init();
+    MOTION_Init();
     ENCODER_Init();
     IR_Init();
     ULTRASONIC_Init();
+    MPU6500_Init(&hi2c1);
+    HMC5883L_Init(&hi2c1);
+    STABLE_Init();
+    ODOM_Init();
+    SLAM_Init();
+    COVERAGE_Init();
 
-    OLED_Init(&hi2c1);
+    OLED_Init(&hi2c2);
     OLED_Clear();
 }
 
-#include <stdio.h>
 
-extern float heading;
-extern float robot_x;
-extern float robot_y;
-extern int motion_state;
-extern int coverage_percent;
-extern int map_cells;
-
+/* ================================================================
+   GENERAL_OLED_Debug
+   ================================================================ */
 void GENERAL_OLED_Debug(void)
 {
     char line[32];
 
     OLED_Clear();
 
-    // Heading + motion
-    sprintf(line,"HD:%3d M:%d",(int)heading,motion_state);
-    OLED_Print(0,0,line);
+    // Static 1px line across top — always visible, proves display is alive
+    OLED_Rectangle(0, 0, 128, 5);
 
-    // IR sensors
-    sprintf(line,"IR:%d %d %d %d",
-            robot.ir_values[0],
-            robot.ir_values[1],
-            robot.ir_values[2],
-            robot.ir_values[3]);
-    OLED_Print(0,10,line);
+    snprintf(line, sizeof(line), "HD:%3d M:%d", (int)heading, motion_state);
+    OLED_Print(0, 2, line);   // shifted down 2px to clear the line
 
-    // Ultrasonic
-    sprintf(line,"US:%2d %2d %2d %2d",
-            (int)robot.ultrasonic_distances[0],
-            (int)robot.ultrasonic_distances[1],
-            (int)robot.ultrasonic_distances[2],
-            (int)robot.ultrasonic_distances[3]);
-    OLED_Print(0,20,line);
+    snprintf(line, sizeof(line), "IR:%d %d %d %d",
+             robot.ir[0], robot.ir[1], robot.ir[2], robot.ir[3]);
+    OLED_Print(0, 12, line);
 
-    // Encoders
-    sprintf(line,"ENC:%ld %ld",
-            robot.encoder_counts[0],
-            robot.encoder_counts[1]);
-    OLED_Print(0,30,line);
+    snprintf(line, sizeof(line), "US:%2d %2d %2d %2d",
+             (int)robot.us_cm[0], (int)robot.us_cm[1],
+             (int)robot.us_cm[2], (int)robot.us_cm[3]);
+    OLED_Print(0, 22, line);
 
-    // Odometry
-    sprintf(line,"XY:%d.%02d %d.%02d",
-            (int)robot_x,(int)(robot_x*100)%100,
-            (int)robot_y,(int)(robot_y*100)%100);
-    OLED_Print(0,40,line);
+    snprintf(line, sizeof(line), "ENC:%ld %ld",
+             robot.enc[0], robot.enc[1]);
+    OLED_Print(0, 32, line);
 
-    // Coverage + mapping
-    sprintf(line,"COV:%d%% MAP:%d",
-            coverage_percent,
-            map_cells);
-    OLED_Print(0,50,line);
+    snprintf(line, sizeof(line), "X:%ld.%02ld Y:%ld.%02ld",
+             (int32_t)robot_x,
+             (int32_t)(fabsf(robot_x - (int32_t)robot_x) * 100),
+             (int32_t)robot_y,
+             (int32_t)(fabsf(robot_y - (int32_t)robot_y) * 100));
+    OLED_Print(0, 42, line);
+
+    snprintf(line, sizeof(line), "COV:%d%% MAP:%d",
+             coverage_percent, map_cells);
+    OLED_Print(0, 52, line);
 
     OLED_Update();
 }
 
-// OLED diagnostic display
-/*void GENERAL_OLED_Update(void)
-{
-    if(HAL_GetTick() - last_oled_switch > 1500)
-    {
-        oled_page++;
-        if(oled_page > 3) oled_page = 0;
-        last_oled_switch = HAL_GetTick();
-    }
 
-    OLED_Clear();
-
-    switch(oled_page)
-    {
-
-        // PAGE 0 — IR + ULTRASONIC
-        case 0:
-
-            sprintf(line,"IR %d %d %d %d",
-                    robot.ir_values[0],
-                    robot.ir_values[1],
-                    robot.ir_values[2],
-                    robot.ir_values[3]);
-            OLED_Print(0,0,line);
-
-            sprintf(line,"US %.1f %.1f",
-                    robot.ultrasonic_distances[0],
-                    robot.ultrasonic_distances[1]);
-            OLED_Print(0,12,line);
-
-            sprintf(line,"US %.1f %.1f",
-                    robot.ultrasonic_distances[2],
-                    robot.ultrasonic_distances[3]);
-            OLED_Print(0,24,line);
-
-        break;
-
-
-
-        // PAGE 1 — ENCODER + MOTION + PID
-        case 1:
-
-            sprintf(line,"ENC L:%ld R:%ld",
-                    robot.encoder_counts[0],
-                    robot.encoder_counts[1]);
-            OLED_Print(0,0,line);
-
-            sprintf(line,"PID %.2f %.2f",
-                    PID_GetLeft(),
-                    PID_GetRight());
-            OLED_Print(0,12,line);
-
-            sprintf(line,"MOTION %d",
-                    MOTION_GetState());
-            OLED_Print(0,24,line);
-
-        break;
-
-
-
-        // PAGE 2 — IMU
-        case 2:
-
-            sprintf(line,"MPU A %.2f %.2f",
-                    MPU6500.ax,
-                    MPU6500.ay);
-            OLED_Print(0,0,line);
-
-            sprintf(line,"G %.2f %.2f",
-                    MPU6500.gx,
-                    MPU6500.gy);
-            OLED_Print(0,12,line);
-
-            sprintf(line,"MAG %.1f",
-                    HMC5883L.heading);
-            OLED_Print(0,24,line);
-
-        break;
-
-
-
-        // PAGE 3 — SLAM + MAPPING
-        case 3:
-
-            sprintf(line,"X %.1f Y %.1f",
-                    ODOMETRY_GetX(),
-                    ODOMETRY_GetY());
-            OLED_Print(0,0,line);
-
-            sprintf(line,"TH %.1f",
-                    ODOMETRY_GetTheta());
-            OLED_Print(0,12,line);
-
-            sprintf(line,"COV %d",
-                    COVERAGE_GetProgress());
-            OLED_Print(0,24,line);
-
-            sprintf(line,"MAP %d",
-                    MAPPING_GetCells());
-            OLED_Print(0,36,line);
-
-        break;
-
-    }
-
-    OLED_Update();
-}*/
-
-
-// Call this in main loop
+/* ================================================================
+   GENERAL_Update — call this every loop iteration from main()
+   ================================================================ */
 void GENERAL_Update(void)
 {
-    float dt = 0.01f;
+    /* ----------------------------------------------------------
+       0.  REAL dt
+           FIX: was hardcoded 0.01f — now measured from tick.
+    ---------------------------------------------------------- */
+    static uint32_t last_tick = 0;
+    uint32_t now_tick = HAL_GetTick();
+    float dt = (float)(now_tick - last_tick) * 0.001f;
+    if(dt < 0.0001f) dt = 0.001f;   /* first call guard       */
+    if(dt > 0.1f)    dt = 0.1f;     /* cap at 100ms           */
+    last_tick = now_tick;
 
-    /* ---------------------------
-       1. READ SENSORS
-    ----------------------------*/
+
+    /* ----------------------------------------------------------
+       1.  READ SENSORS
+    ---------------------------------------------------------- */
 
     ENCODER_Update();
+    robot.enc[0] = ENCODER_GetCount(0);
+    robot.enc[1] = ENCODER_GetCount(1);
 
-    int32_t enc_left  = ENCODER_GetCount(0);
-    int32_t enc_right = ENCODER_GetCount(1);
+    for(uint8_t i = 0; i < 4; i++)
+        robot.ir[i] = IR_Read(i);
 
-    for(uint8_t i=0;i<4;i++)
-        robot.ir_values[i] = IR_Read(i);
-
-    for(uint8_t i=0;i<4;i++)
-        robot.ultrasonic_distances[i] = ULTRASONIC_Read(i);
+    /* FIX: ULTRASONIC_Read() returns raw timer ticks (µs).
+       HC-SR04: distance_cm = pulse_µs / 58
+       Assumes TIM2 prescaler = 83 → 1MHz → 1 tick = 1µs       */
+    for(uint8_t i = 0; i < 4; i++)
+        robot.us_cm[i] = (float)ULTRASONIC_Read(i) / 58.0f;
 
     MPU6500_ReadRaw(&imu_raw);
     HMC5883L_ReadRaw(&mag_raw);
 
 
-    /* ---------------------------
-       2. IMU ORIENTATION
-    ----------------------------*/
+    /* ----------------------------------------------------------
+       2.  IMU FUSION
+    ---------------------------------------------------------- */
 
     STABLE_Update(&imu_raw, &mag_raw, dt);
-
     Orientation orient = STABLE_GetOrientation();
 
 
-    /* ---------------------------
-       3. WHEEL ODOMETRY
-    ----------------------------*/
+    /* ----------------------------------------------------------
+       3.  WHEEL ODOMETRY
+           FIX: was passing cumulative totals — now passes delta
+                (distance since last call) as odometry requires.
+           FIX: HC-020K has no direction pin — apply sign from
+                commanded motor direction.
+    ---------------------------------------------------------- */
 
-    float left_dist  = enc_left  * 0.001f;
-    float right_dist = enc_right * 0.001f;
+    static int32_t prev_enc[2] = {0, 0};
+
+    int32_t delta[2];
+    delta[0] = robot.enc[0] - prev_enc[0];
+    delta[1] = robot.enc[1] - prev_enc[1];
+    prev_enc[0] = robot.enc[0];
+    prev_enc[1] = robot.enc[1];
+
+    /* Apply direction sign — HC-020K counts up regardless of direction */
+    if(motor_dir[0] == MOTOR_BACKWARD) delta[0] = -delta[0];
+    if(motor_dir[1] == MOTOR_BACKWARD) delta[1] = -delta[1];
+
+    float left_dist  = (float)delta[0] * TICKS_TO_METERS;
+    float right_dist = (float)delta[1] * TICKS_TO_METERS;
 
     ODOM_Update(left_dist, right_dist, dt);
-
     RobotPose pose = ODOM_GetPose();
 
 
-    /* ---------------------------
-       4. SLAM YAW CORRECTION
-    ----------------------------*/
+    /* ----------------------------------------------------------
+       4.  SLAM — fuse IMU yaw into odometry theta
+    ---------------------------------------------------------- */
 
     SLAM_Update(&pose, orient);
 
 
-    /* ---------------------------
-       5. OBSTACLE DETECTION
-    ----------------------------*/
+    /* ----------------------------------------------------------
+       5.  OBSTACLE DETECTION  (cm, not raw ticks)
+    ---------------------------------------------------------- */
 
-    int obstacle = 0;
-
-    if(robot.ultrasonic_distances[0] < 20 ||
-       robot.ultrasonic_distances[1] < 20)
-        obstacle = 1;
+    int obstacle = (robot.us_cm[0] < OBSTACLE_CM ||
+                    robot.us_cm[1] < OBSTACLE_CM) ? 1 : 0;
 
 
-    /* ---------------------------
-       6. COVERAGE PLANNER
-    ----------------------------*/
+    /* ----------------------------------------------------------
+       6.  COVERAGE PLANNER
+           FIX: pass orient.yaw so TURN state can detect when
+                the physical turn is complete.
+    ---------------------------------------------------------- */
 
-    float target_heading = 0;
-    int base_speed = 0;
+    float target_heading = 0.0f;
+    int   base_speed     = 0;
 
     COVERAGE_Update(pose,
+                    orient.yaw,
                     obstacle,
                     &target_heading,
                     &base_speed);
 
 
-    /* ---------------------------
-       7. HEADING CONTROL
-    ----------------------------*/
+    /* ----------------------------------------------------------
+       7.  HEADING CONTROL — PID → per-wheel speeds
+    ---------------------------------------------------------- */
 
-    int left_motor = 0;
-    int right_motor = 0;
+    int left_out  = 0;
+    int right_out = 0;
 
-    MOTION_DriveStraight(
-        target_heading,
-        orient.yaw,
-        base_speed,
-        dt,
-        &left_motor,
-        &right_motor
-    );
+    MOTION_DriveStraight(target_heading,
+                         orient.yaw,
+                         (float)base_speed,
+                         dt,
+                         &left_out,
+                         &right_out);
 
 
-    /* ---------------------------
-       8. MOTOR OUTPUT
-    ----------------------------*/
+    /* ----------------------------------------------------------
+       8.  MOTOR OUTPUT
+           FIX: was passing unclamped int to uint8_t — wraps
+                above 255.  Now clamped to ±999 (ARR value).
+    ---------------------------------------------------------- */
 
-    MOTOR_Set(0, left_motor > 0 ? MOTOR_FORWARD : MOTOR_BACKWARD, abs(left_motor));
-    MOTOR_Set(1, right_motor > 0 ? MOTOR_FORWARD : MOTOR_BACKWARD, abs(right_motor));
+    if(left_out  >  MOTOR_OUT_MAX) left_out  =  MOTOR_OUT_MAX;
+    if(left_out  < -MOTOR_OUT_MAX) left_out  = -MOTOR_OUT_MAX;
+    if(right_out >  MOTOR_OUT_MAX) right_out =  MOTOR_OUT_MAX;
+    if(right_out < -MOTOR_OUT_MAX) right_out = -MOTOR_OUT_MAX;
+
+    motor_dir[0] = (left_out  >= 0) ? MOTOR_FORWARD : MOTOR_BACKWARD;
+    motor_dir[1] = (right_out >= 0) ? MOTOR_FORWARD : MOTOR_BACKWARD;
+
+    MOTOR_Set(0, motor_dir[0], (uint16_t)abs(left_out));
+    MOTOR_Set(1, motor_dir[1], (uint16_t)abs(right_out));
 
 
-    /* ---------------------------
-       9. DEBUG / OLED
-    ----------------------------*/
+    /* ----------------------------------------------------------
+       9.  UPDATE GLOBALS + OLED
+    ---------------------------------------------------------- */
 
     heading = orient.yaw;
     robot_x = pose.x;
