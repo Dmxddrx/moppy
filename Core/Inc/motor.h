@@ -5,6 +5,14 @@
 #include <stdint.h>
 #include "motor_pwm.h"
 
+/* ---------------------------------------------------------------
+   Direction constants — defined here so every module can use them
+   without re-defining locally (was the previous bug in motor.c)
+---------------------------------------------------------------- */
+#define MOTOR_STOP     0
+#define MOTOR_FORWARD  1
+#define MOTOR_BACKWARD 2
+
 // Initialize motor GPIOs and PWM
 void MOTOR_Init(void);
 

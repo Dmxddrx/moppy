@@ -59,6 +59,16 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define M5_AIN1_Pin GPIO_PIN_4
+#define M5_AIN1_GPIO_Port GPIOE
+#define M5_AIN2_Pin GPIO_PIN_5
+#define M5_AIN2_GPIO_Port GPIOE
+#define M6_BIN1_Pin GPIO_PIN_6
+#define M6_BIN1_GPIO_Port GPIOE
+#define M1_AIN1_Pin GPIO_PIN_0
+#define M1_AIN1_GPIO_Port GPIOC
+#define M1_AIN2_Pin GPIO_PIN_1
+#define M1_AIN2_GPIO_Port GPIOC
 #define SR04_ECHO1_Pin GPIO_PIN_0
 #define SR04_ECHO1_GPIO_Port GPIOA
 #define SR04_ECHO2_Pin GPIO_PIN_1
@@ -73,12 +83,18 @@ void Error_Handler(void);
 #define MOTOR1_PWM_GPIO_Port GPIOA
 #define MOTOR2_PWM_Pin GPIO_PIN_7
 #define MOTOR2_PWM_GPIO_Port GPIOA
+#define M2_BIN1_Pin GPIO_PIN_4
+#define M2_BIN1_GPIO_Port GPIOC
+#define M2_BIN2_Pin GPIO_PIN_5
+#define M2_BIN2_GPIO_Port GPIOC
 #define MOTOR3_PWM_Pin GPIO_PIN_0
 #define MOTOR3_PWM_GPIO_Port GPIOB
-#define ENC_A_Pin GPIO_PIN_9
-#define ENC_A_GPIO_Port GPIOE
-#define ENC_B_Pin GPIO_PIN_11
-#define ENC_B_GPIO_Port GPIOE
+#define M6_BIN2_Pin GPIO_PIN_7
+#define M6_BIN2_GPIO_Port GPIOE
+#define ENC1_A_Pin GPIO_PIN_9
+#define ENC1_A_GPIO_Port GPIOE
+#define ENC1_B_Pin GPIO_PIN_11
+#define ENC1_B_GPIO_Port GPIOE
 #define OLED_SCL_Pin GPIO_PIN_10
 #define OLED_SCL_GPIO_Port GPIOB
 #define OLED_SDA_Pin GPIO_PIN_11
@@ -89,6 +105,14 @@ void Error_Handler(void);
 #define MOTOR5_PWM_GPIO_Port GPIOD
 #define MOTOR6_PWM_Pin GPIO_PIN_14
 #define MOTOR6_PWM_GPIO_Port GPIOD
+#define ENC2_A_Pin GPIO_PIN_6
+#define ENC2_A_GPIO_Port GPIOC
+#define ENC2_B_Pin GPIO_PIN_7
+#define ENC2_B_GPIO_Port GPIOC
+#define M4_BIN1_Pin GPIO_PIN_8
+#define M4_BIN1_GPIO_Port GPIOC
+#define M4_BIN2_Pin GPIO_PIN_9
+#define M4_BIN2_GPIO_Port GPIOC
 #define ESP_RX_Pin GPIO_PIN_9
 #define ESP_RX_GPIO_Port GPIOA
 #define ESP_TX_Pin GPIO_PIN_10
@@ -101,6 +125,10 @@ void Error_Handler(void);
 #define IR3_EXTI3_GPIO_Port GPIOD
 #define IR4_EXTI4_Pin GPIO_PIN_4
 #define IR4_EXTI4_GPIO_Port GPIOD
+#define M3_AIN1_Pin GPIO_PIN_5
+#define M3_AIN1_GPIO_Port GPIOD
+#define M3_AIN2_Pin GPIO_PIN_6
+#define M3_AIN2_GPIO_Port GPIOD
 #define SPI1_MISO_Pin GPIO_PIN_4
 #define SPI1_MISO_GPIO_Port GPIOB
 #define SPI1_MOSI_Pin GPIO_PIN_5
