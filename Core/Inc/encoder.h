@@ -2,18 +2,14 @@
 #define ENCODER_H
 
 #include "main.h"
+#include "stm32f4xx_hal.h"
 
-typedef struct {
-    int32_t count;
-    float speed_rps;
-} Encoder;
+#define ENCODER_COUNT 2
 
-void ENC_Init(TIM_HandleTypeDef *htim);
+void ENCODER_Init(void);
+void ENCODER_Update(void);
 
-int32_t ENC_GetCount(void);
-
-float ENC_GetSpeed(void);
-
-void ENC_Update(void);
+int32_t ENCODER_GetCount(uint8_t encoder);
+void ENCODER_Reset(uint8_t encoder_index);
 
 #endif

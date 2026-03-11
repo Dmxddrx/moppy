@@ -2,15 +2,12 @@
 #define IR_H
 
 #include "main.h"
+#include <stdint.h>
 
-#define NUM_IR 4
-
-typedef struct {
-    uint8_t state; // 0 = no obstacle, 1 = obstacle detected
-} IRSensor;
-
+// Initialize IR sensors
 void IR_Init(void);
 
-uint8_t IR_Get(uint8_t sensor_index);
+// Read IR sensor state (0 or 1) by index 0-3
+uint8_t IR_Read(uint8_t sensor_index);
 
 #endif

@@ -1,28 +1,50 @@
 #include "encoder.h"
 
-static TIM_HandleTypeDef *htim_encoder;
-static Encoder encoder;
+// TIM handle from main.c
+extern TIM_HandleTypeDef htim1;
 
-void ENC_Init(TIM_HandleTypeDef *htim)
+static TIM_HandleTypeDef* ENCODER_TIM[ENCODER_COUNT] = {&htim1, &htim1};
+
+static int32_t encoder_total[ENCODER_COUNT] = {0};
+static int16_t encoder_last[ENCODER_COUNT] = {0};
+
+
+void ENCODER_Init(void)
 {
-    htim_encoder = htim;
-    encoder.count = 0;
-    encoder.speed_rps = 0;
-    HAL_TIM_Encoder_Start(htim_encoder, TIM_CHANNEL_ALL);
+    HAL_TIM_Encoder_Start(ENCODER_TIM[0], TIM_CHANNEL_ALL);
+    HAL_TIM_Encoder_Start(ENCODER_TIM[1], TIM_CHANNEL_ALL);
+
+    encoder_last[0] = __HAL_TIM_GET_COUNTER(ENCODER_TIM[0]);
+    encoder_last[1] = __HAL_TIM_GET_COUNTER(ENCODER_TIM[1]);
 }
 
-void ENC_Update(void)
+
+void ENCODER_Update(void)
 {
-    encoder.count = __HAL_TIM_GET_COUNTER(htim_encoder);
-    // Speed calculation optional using delta count/time
+    for(uint8_t i=0;i<ENCODER_COUNT;i++)
+    {
+        int16_t now = __HAL_TIM_GET_COUNTER(ENCODER_TIM[i]);
+        int16_t diff = now - encoder_last[i];
+
+        encoder_last[i] = now;
+
+        encoder_total[i] += diff;
+    }
 }
 
-int32_t ENC_GetCount(void)
+
+int32_t ENCODER_GetCount(uint8_t encoder)
 {
-    return encoder.count;
+    if(encoder >= ENCODER_COUNT) return 0;
+
+    return encoder_total[encoder];
 }
 
-float ENC_GetSpeed(void)
+
+void ENCODER_Reset(uint8_t encoder)
 {
-    return encoder.speed_rps;
+    if(encoder >= ENCODER_COUNT) return;
+
+    encoder_total[encoder] = 0;
+    __HAL_TIM_SET_COUNTER(ENCODER_TIM[encoder],0);
 }

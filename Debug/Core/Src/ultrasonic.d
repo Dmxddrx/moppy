@@ -1,5 +1,4 @@
-Core/Src/general.o: ../Core/Src/general.c ../Core/Inc/general.h \
- ../Core/Inc/coverage.h ../Core/Inc/odometry.h ../Core/Inc/encoder.h \
+Core/Src/ultrasonic.o: ../Core/Src/ultrasonic.c ../Core/Inc/ultrasonic.h \
  ../Core/Inc/main.h ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h \
  ../Core/Inc/stm32f4xx_hal_conf.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h \
@@ -31,15 +30,8 @@ Core/Src/general.o: ../Core/Src/general.c ../Core/Inc/general.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
- ../Core/Inc/hmc5883l.h ../Core/Inc/ir.h ../Core/Inc/mapping.h \
- ../Core/Inc/motion.h ../Core/Inc/pid.h ../Core/Inc/motor_pwm.h \
- ../Core/Inc/motor.h ../Core/Inc/mpu6500.h ../Core/Inc/oled.h \
- ../Core/Inc/slam_lite.h ../Core/Inc/stable.h ../Core/Inc/ultrasonic.h \
- ../Core/Inc/wall_follow.h
-../Core/Inc/general.h:
-../Core/Inc/coverage.h:
-../Core/Inc/odometry.h:
-../Core/Inc/encoder.h:
+ ../Core/Inc/main.h
+../Core/Inc/ultrasonic.h:
 ../Core/Inc/main.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
@@ -72,16 +64,4 @@ Core/Src/general.o: ../Core/Src/general.c ../Core/Inc/general.h \
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h:
-../Core/Inc/hmc5883l.h:
-../Core/Inc/ir.h:
-../Core/Inc/mapping.h:
-../Core/Inc/motion.h:
-../Core/Inc/pid.h:
-../Core/Inc/motor_pwm.h:
-../Core/Inc/motor.h:
-../Core/Inc/mpu6500.h:
-../Core/Inc/oled.h:
-../Core/Inc/slam_lite.h:
-../Core/Inc/stable.h:
-../Core/Inc/ultrasonic.h:
-../Core/Inc/wall_follow.h:
+../Core/Inc/main.h:

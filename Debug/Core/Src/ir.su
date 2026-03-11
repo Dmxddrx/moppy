@@ -1,3 +1,2 @@
-../Core/Src/ir.c:5:6:IR_Init	16	static
-../Core/Src/ir.c:13:6:IR_Update	16	static
-../Core/Src/ir.c:19:9:IR_Get	16	static
+../Core/Src/ir.c:7:6:IR_Init	4	static
+../Core/Src/ir.c:13:9:IR_Read	16	static

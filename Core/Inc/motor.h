@@ -3,14 +3,15 @@
 
 #include "main.h"
 #include <stdint.h>
+#include "motor_pwm.h"
 
+// Initialize motor GPIOs and PWM
 void MOTOR_Init(void);
 
-// Set motor speed in range -1000..1000, negative = reverse
-void MOTOR_SetSpeed(int16_t m1, int16_t m2, int16_t m3,
-                    int16_t m4, int16_t m5, int16_t m6);
+// Set motor direction (0: stop, 1: forward, 2: backward)
+void MOTOR_SetDir(uint8_t motor_index, uint8_t direction);
 
-// Stop all motors
-void MOTOR_StopAll(void);
+// Set motor speed and direction
+void MOTOR_Set(uint8_t motor_index, uint8_t direction, uint8_t speed);
 
 #endif

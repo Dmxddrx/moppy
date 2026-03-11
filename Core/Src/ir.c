@@ -1,23 +1,17 @@
 #include "ir.h"
 
-static IRSensor ir_sensors[NUM_IR];
+// IR pins mapping
+GPIO_TypeDef* IR_GPIO[4] = {GPIOD, GPIOD, GPIOD, GPIOD};
+uint16_t IR_PIN[4] = {IR1_EXTI0_Pin, IR2_EXTI1_Pin, IR3_EXTI3_Pin, IR4_EXTI4_Pin};
 
 void IR_Init(void)
 {
-    // Configure EXTI lines PD0, PD1, PD3, PD4 in CubeMX
-    for(int i=0;i<NUM_IR;i++)
-        ir_sensors[i].state = 0;
+    // EXTI pins already configured in MX_GPIO_Init
+    // Optionally enable IRQ here if needed
 }
 
-// Call in EXTI IRQ handler
-void IR_Update(uint8_t sensor_index, uint8_t value)
+uint8_t IR_Read(uint8_t sensor_index)
 {
-    if(sensor_index < NUM_IR)
-        ir_sensors[sensor_index].state = value;
-}
-
-uint8_t IR_Get(uint8_t sensor_index)
-{
-    if(sensor_index >= NUM_IR) return 0;
-    return ir_sensors[sensor_index].state;
+    if(sensor_index > 3) return 0;
+    return (HAL_GPIO_ReadPin(IR_GPIO[sensor_index], IR_PIN[sensor_index]) == GPIO_PIN_SET) ? 1 : 0;
 }

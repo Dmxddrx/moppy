@@ -2,19 +2,12 @@
 #define ULTRASONIC_H
 
 #include "main.h"
+#include <stdint.h>
 
-#define NUM_ULTRASONIC 4
+// Initialize ultrasonic sensors (TIM + GPIO)
+void ULTRASONIC_Init(void);
 
-typedef struct {
-    uint32_t distance_mm;
-} UltrasonicSensor;
-
-void US_Init(TIM_HandleTypeDef *htim);
-
-void US_Trigger(uint8_t sensor_index);
-
-void US_Update(void);
-
-uint32_t US_GetDistance(uint8_t sensor_index);
+// Read distance in microseconds for sensor index 0-3
+uint16_t ULTRASONIC_Read(uint8_t sensor_index);
 
 #endif

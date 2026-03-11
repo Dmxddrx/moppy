@@ -1,20 +1,28 @@
 #ifndef GENERAL_H
 #define GENERAL_H
 
-#include "main.h"
-#include "ultrasonic.h"
-#include "ir.h"
+#include "coverage.h"
 #include "encoder.h"
-#include "mpu6500.h"
 #include "hmc5883l.h"
-#include "stable.h"
-#include "motor_pwm.h"
+#include "ir.h"
+#include "main.h"
 #include "mapping.h"
+#include "motion.h"
+#include "motor_pwm.h"
+#include "motor.h"
+#include "mpu6500.h"
+#include "odometry.h"
+#include "oled.h"
+#include "pid.h"
+#include "slam_lite.h"
+#include "stable.h"
+#include "ultrasonic.h"
+#include "wall_follow.h"
 
-// Initialize all sensors and modules
+// Initialize all robot modules
 void GENERAL_Init(void);
-
-// Call in main loop periodically
+void GENERAL_OLED_Update(void);
+// Update loop: call this in main while(1)
 void GENERAL_Update(void);
 
 #endif
