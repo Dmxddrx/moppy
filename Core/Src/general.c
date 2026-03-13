@@ -230,6 +230,14 @@ void GENERAL_Update(void)
                     &base_speed);
 
 
+    // In GENERAL_Update() after COVERAGE_Update():
+    // Clear IR flags — they are set by interrupt, cleared here after use
+    if(obstacle)
+    {
+        for(uint8_t i = 0; i < 4; i++)
+            IR_Clear(i);
+    }
+
     /* ----------------------------------------------------------
        7.  HEADING CONTROL — PID → per-wheel speeds
     ---------------------------------------------------------- */

@@ -11,7 +11,7 @@ void OLED_Init(I2C_HandleTypeDef *hi2c) {
 
 void OLED_Clear(void) {
     SSD1306_Fill(SSD1306_COLOR_BLACK);
-    SSD1306_UpdateScreen();
+
 }
 
 //Draw text into the buffer only (no immediate update)

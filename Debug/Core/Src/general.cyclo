@@ -1,3 +1,0 @@
-../Core/Src/general.c:67:6:GENERAL_Init	1
-../Core/Src/general.c:89:6:GENERAL_OLED_Debug	1
-../Core/Src/general.c:132:6:GENERAL_Update	15

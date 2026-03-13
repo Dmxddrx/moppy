@@ -1,38 +1,34 @@
 #include "ir.h"
 
-/* ================================================================
-   IR.C
-   4x IR object detection sensors on GPIOD.
-   Uses port and pin defines from CubeMX-generated main.h.
-
-   IR1 → PD0  IR1_EXTI0
-   IR2 → PD1  IR2_EXTI1
-   IR3 → PD3  IR3_EXTI3  (PD2 skipped — not EXTI-capable cleanly)
-   IR4 → PD4  IR4_EXTI4
-   ================================================================ */
-
-static GPIO_TypeDef* const IR_PORT[4] = {
-    IR1_EXTI0_GPIO_Port,
-    IR2_EXTI1_GPIO_Port,
-    IR3_EXTI3_GPIO_Port,
-    IR4_EXTI4_GPIO_Port
-};
-
-static const uint16_t IR_PIN[4] = {
-    IR1_EXTI0_Pin,
-    IR2_EXTI1_Pin,
-    IR3_EXTI3_Pin,
-    IR4_EXTI4_Pin
-};
+/* IR state updated by EXTI interrupt, read by IR_Read() */
+static volatile uint8_t ir_state[4] = {0, 0, 0, 0};
 
 void IR_Init(void)
 {
-    /* GPIO configured by MX_GPIO_Init() — nothing to do here */
+    /* GPIO and EXTI already configured by CubeMX MX_GPIO_Init.
+       Just clear state on init.                               */
+    ir_state[0] = 0;
+    ir_state[1] = 0;
+    ir_state[2] = 0;
+    ir_state[3] = 0;
 }
 
 uint8_t IR_Read(uint8_t sensor_index)
 {
-    if(sensor_index >= 4) return 0;
-    return (HAL_GPIO_ReadPin(IR_PORT[sensor_index],
-                             IR_PIN[sensor_index]) == GPIO_PIN_SET) ? 1 : 0;
+    if(sensor_index > 3) return 0;
+    return ir_state[sensor_index];
+}
+
+/* Called automatically by HAL when any EXTI line fires.
+   GPIO_Pin is the pin mask that triggered.               */
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+    switch(GPIO_Pin)
+    {
+        case IR1_EXTI0_Pin: ir_state[0] = 1; break;
+        case IR2_EXTI1_Pin: ir_state[1] = 1; break;
+        case IR3_EXTI3_Pin: ir_state[2] = 1; break;
+        case IR4_EXTI4_Pin: ir_state[3] = 1; break;
+        default: break;
+    }
 }

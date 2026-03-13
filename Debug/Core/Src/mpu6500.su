@@ -1,2 +1,2 @@
 ../Core/Src/mpu6500.c:12:6:MPU6500_Init	40	static
-../Core/Src/mpu6500.c:41:6:MPU6500_ReadRaw	48	static
+../Core/Src/mpu6500.c:42:6:MPU6500_ReadRaw	48	static
