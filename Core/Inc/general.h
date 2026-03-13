@@ -1,7 +1,7 @@
 #ifndef GENERAL_H
 #define GENERAL_H
 
-#include "coverage.h"
+/*#include "coverage.h"
 #include "encoder.h"
 #include "hmc5883l.h"
 #include "ir.h"
@@ -17,12 +17,14 @@
 #include "slam_lite.h"
 #include "stable.h"
 #include "ultrasonic.h"
-#include "wall_follow.h"
+#include "wall_follow.h"*/
 
-// Initialize all robot modules
+#include "main.h"
+#include "mpu6500.h"
+#include "oled.h"
+
 void GENERAL_Init(void);
-void GENERAL_OLED_Update(void);
-// Update loop: call this in main while(1)
+void GENERAL_OLED_Debug(void);
 void GENERAL_Update(void);
 
 #endif
