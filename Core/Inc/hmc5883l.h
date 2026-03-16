@@ -20,8 +20,16 @@ typedef struct
 
 } HMC5883L_RawData;
 
+typedef struct
+{
+    int16_t mx;
+    int16_t my;
+    int16_t mz;
+} HMC5883L_SelfTestData;
+
 HMC_Status HMC5883L_Check(I2C_HandleTypeDef *hi2c);
 void HMC5883L_Init(void);
 void HMC5883L_ReadRaw(HMC5883L_RawData *data);
+HMC5883L_SelfTestData HMC5883L_SelfTest(void);
 
 #endif

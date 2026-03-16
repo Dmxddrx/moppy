@@ -4,10 +4,16 @@
 #include "main.h"
 #include <stdint.h>
 
-// Initialize ultrasonic sensors (TIM + GPIO)
-void ULTRASONIC_Init(void);
+typedef struct
+{
+    uint32_t pulse_us;   /* raw echo pulse width in microseconds */
+    uint8_t  ready;      /* 1 = new measurement available        */
+} ULTRASONIC_Data;
 
-// Read distance in microseconds for sensor index 0-3
-uint16_t ULTRASONIC_Read(uint8_t sensor_index);
+void ULTRASONIC_Init(void);
+void ULTRASONIC_Trigger(uint8_t index);
+void ULTRASONIC_CaptureCallback(uint32_t channel);   /* call from HAL IC callback */
+
+extern ULTRASONIC_Data ultrasonic[4];
 
 #endif

@@ -1,3 +1,5 @@
-../Core/Src/general.c:19:6:GENERAL_Init	8	static
-../Core/Src/general.c:39:6:GENERAL_OLED_Debug	40	static
-../Core/Src/general.c:81:6:GENERAL_Update	8	static
+../Core/Src/general.c:38:6:GENERAL_Init	8	static
+../Core/Src/general.c:117:13:GENERAL_OLED_Page_Sensors	40	static
+../Core/Src/general.c:153:13:GENERAL_OLED_Page_Ultrasonic	40	static
+../Core/Src/general.c:175:6:GENERAL_OLED_Debug	8	static
+../Core/Src/general.c:199:6:GENERAL_Update	8	static

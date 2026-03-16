@@ -5,13 +5,6 @@
 #define MODE_REG       0x02
 #define DATA_X_MSB     0x03
 
-#define ID_REG_A    0x0A
-#define ID_REG_B    0x0B
-#define ID_REG_C    0x0C
-#define ID_VAL_A    0x48   /* 'H' */
-#define ID_VAL_B    0x34   /* '4' */
-#define ID_VAL_C    0x33   /* '3' */
-
 static I2C_HandleTypeDef *hmc_i2c;
 
 /* ================================================================
@@ -51,6 +44,37 @@ void HMC5883L_Init(void)
     /* Continuous measurement mode */
     data = 0x00;
     HAL_I2C_Mem_Write(hmc_i2c, HMC5883L_ADDR, MODE_REG, 1, &data, 1, 100);
+}
+
+HMC5883L_SelfTestData HMC5883L_SelfTest(void)
+{
+    HMC5883L_SelfTestData result = {0, 0, 0};
+    uint8_t buf[6] = {0};
+    uint8_t data;
+
+    /* Positive bias */
+    data = 0x71;
+    HAL_I2C_Mem_Write(hmc_i2c, HMC5883L_ADDR, CONFIG_A, 1, &data, 1, 100);
+    data = 0xA0;
+    HAL_I2C_Mem_Write(hmc_i2c, HMC5883L_ADDR, CONFIG_B, 1, &data, 1, 100);
+
+    /* Single measurement mode — bias coil active for this one read */
+    data = 0x01;
+    HAL_I2C_Mem_Write(hmc_i2c, HMC5883L_ADDR, MODE_REG, 1, &data, 1, 100);
+
+    HAL_Delay(10);   /* ~6ms needed for single measurement */
+
+    HAL_I2C_Mem_Read(hmc_i2c, HMC5883L_ADDR,
+                     DATA_X_MSB, 1, buf, 6, 100);
+
+    result.mx = (int16_t)((buf[0] << 8) | buf[1]);
+    result.mz = (int16_t)((buf[2] << 8) | buf[3]);
+    result.my = (int16_t)((buf[4] << 8) | buf[5]);
+
+    /* Restore normal config */
+    HMC5883L_Init();
+
+    return result;
 }
 
 void HMC5883L_ReadRaw(HMC5883L_RawData *data)

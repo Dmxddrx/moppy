@@ -1,0 +1,3 @@
+../Core/Src/btns.c:14:6:BTNS_Init	1
+../Core/Src/btns.c:23:6:BTNS_Update	4
+../Core/Src/btns.c:44:11:BTNS_Get_OLEDPage	1

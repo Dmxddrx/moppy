@@ -1,3 +1,4 @@
+"./Core/Src/btns.o"
 "./Core/Src/coverage.o"
 "./Core/Src/encoder.o"
 "./Core/Src/general.o"

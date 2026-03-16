@@ -20,6 +20,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stm32f4xx_it.h"
+#include "ultrasonic.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 /* USER CODE END Includes */
@@ -273,5 +274,18 @@ void DMA2_Stream7_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
-
+void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+{
+    if(htim->Instance == TIM2)
+    {
+        if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
+            ULTRASONIC_CaptureCallback(TIM_CHANNEL_1);
+        else if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2)
+            ULTRASONIC_CaptureCallback(TIM_CHANNEL_2);
+        else if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_3)
+            ULTRASONIC_CaptureCallback(TIM_CHANNEL_3);
+        else if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4)
+            ULTRASONIC_CaptureCallback(TIM_CHANNEL_4);
+    }
+}
 /* USER CODE END 1 */

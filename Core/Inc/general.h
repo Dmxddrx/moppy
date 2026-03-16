@@ -16,16 +16,28 @@
 #include "pid.h"
 #include "slam_lite.h"
 #include "stable.h"
-#include "ultrasonic.h"
+
 #include "wall_follow.h"*/
 
 #include "main.h"
 #include "mpu6500.h"
 #include "hmc5883l.h"
 #include "oled.h"
+#include "ultrasonic.h"
+#include "btns.h"
+
+#define ENABLE_OLED_SELFTEST   0
+#define ENABLE_OLED_DEBUG      1
 
 void GENERAL_Init(void);
-void GENERAL_OLED_Debug(void);
 void GENERAL_Update(void);
+
+#if ENABLE_OLED_SELFTEST
+void GENERAL_OLED_SelfTest(void);
+#endif
+
+#if ENABLE_OLED_DEBUG
+void GENERAL_OLED_Debug(void);
+#endif
 
 #endif
