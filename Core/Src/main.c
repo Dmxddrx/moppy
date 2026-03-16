@@ -712,7 +712,13 @@ static void MX_GPIO_Init(void)
                           |M4_BIN1_Pin|M4_BIN2_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOD, M3_AIN1_Pin|M3_AIN2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, TRIG2_Pin|TRIG3_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(TRIG1_GPIO_Port, TRIG1_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOD, M3_AIN1_Pin|M3_AIN2_Pin|TRIG4_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : M5_AIN1_Pin M5_AIN2_Pin M6_BIN1_Pin M6_BIN2_Pin */
   GPIO_InitStruct.Pin = M5_AIN1_Pin|M5_AIN2_Pin|M6_BIN1_Pin|M6_BIN2_Pin;
@@ -730,14 +736,34 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : BTN_OLED_PAGE_Pin */
+  GPIO_InitStruct.Pin = BTN_OLED_PAGE_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(BTN_OLED_PAGE_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : TRIG2_Pin TRIG3_Pin */
+  GPIO_InitStruct.Pin = TRIG2_Pin|TRIG3_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : TRIG1_Pin */
+  GPIO_InitStruct.Pin = TRIG1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(TRIG1_GPIO_Port, &GPIO_InitStruct);
+
   /*Configure GPIO pins : IR1_EXTI0_Pin IR2_EXTI1_Pin IR3_EXTI3_Pin IR4_EXTI4_Pin */
   GPIO_InitStruct.Pin = IR1_EXTI0_Pin|IR2_EXTI1_Pin|IR3_EXTI3_Pin|IR4_EXTI4_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : M3_AIN1_Pin M3_AIN2_Pin */
-  GPIO_InitStruct.Pin = M3_AIN1_Pin|M3_AIN2_Pin;
+  /*Configure GPIO pins : M3_AIN1_Pin M3_AIN2_Pin TRIG4_Pin */
+  GPIO_InitStruct.Pin = M3_AIN1_Pin|M3_AIN2_Pin|TRIG4_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

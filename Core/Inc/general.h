@@ -21,6 +21,7 @@
 
 #include "main.h"
 #include "mpu6500.h"
+#include "hmc5883l.h"
 #include "oled.h"
 
 void GENERAL_Init(void);

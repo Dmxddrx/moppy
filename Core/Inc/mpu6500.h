@@ -6,6 +6,12 @@
 
 #define MPU6500_ADDR (0x68 << 1)
 
+typedef enum {
+    MPU_OK      = 0,
+    MPU_NO_I2C  = 1,   // HAL_I2C_Mem_Read failed
+    MPU_WRONG_ID = 2,  // wrong WHO_AM_I value
+} MPU_Status;
+
 /* Raw sensor data structure */
 typedef struct
 {
@@ -19,7 +25,8 @@ typedef struct
 
 } MPU6500_RawData;
 
-void MPU6500_Init(I2C_HandleTypeDef *hi2c);
+MPU_Status MPU6500_Check(I2C_HandleTypeDef *hi2c);
+void MPU6500_Init(void);
 void MPU6500_ReadRaw(MPU6500_RawData *data);
 
 #endif

@@ -102,7 +102,7 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* hi2c)
     PB6     ------> I2C1_SCL
     PB7     ------> I2C1_SDA
     */
-    GPIO_InitStruct.Pin = GPIO_PIN_6|GPIO_PIN_7;
+    GPIO_InitStruct.Pin = SCL1_Pin|SDA1_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
@@ -162,9 +162,9 @@ void HAL_I2C_MspDeInit(I2C_HandleTypeDef* hi2c)
     PB6     ------> I2C1_SCL
     PB7     ------> I2C1_SDA
     */
-    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_6);
+    HAL_GPIO_DeInit(SCL1_GPIO_Port, SCL1_Pin);
 
-    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_7);
+    HAL_GPIO_DeInit(SDA1_GPIO_Port, SDA1_Pin);
 
     /* USER CODE BEGIN I2C1_MspDeInit 1 */
 
@@ -419,7 +419,7 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* htim)
     GPIO_InitStruct.Alternate = GPIO_AF2_TIM3;
     HAL_GPIO_Init(M3_PWM_GPIO_Port, &GPIO_InitStruct);
 
-    GPIO_InitStruct.Pin = GPIO_PIN_4|GPIO_PIN_5;
+    GPIO_InitStruct.Pin = M1_PWM_Pin|M2_PWM_Pin;
     GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
     GPIO_InitStruct.Pull = GPIO_NOPULL;
     GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;

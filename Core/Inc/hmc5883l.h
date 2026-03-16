@@ -6,6 +6,12 @@
 
 #define HMC5883L_ADDR (0x1E << 1)
 
+typedef enum {
+    HMC_OK       = 0,
+    HMC_NO_I2C   = 1,
+    HMC_WRONG_ID = 2,
+} HMC_Status;
+
 typedef struct
 {
     int16_t mx;
@@ -14,7 +20,8 @@ typedef struct
 
 } HMC5883L_RawData;
 
-void HMC5883L_Init(I2C_HandleTypeDef *hi2c);
+HMC_Status HMC5883L_Check(I2C_HandleTypeDef *hi2c);
+void HMC5883L_Init(void);
 void HMC5883L_ReadRaw(HMC5883L_RawData *data);
 
 #endif

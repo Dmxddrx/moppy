@@ -7,11 +7,32 @@
 #define CONFIG         0x1A
 #define SMPLRT_DIV     0x19
 
+#define WHO_AM_I_REG  0x75
+#define WHO_AM_I_VAL  0x68 /* fixed ID for MPU6500 */
+
 static I2C_HandleTypeDef *mpu_i2c;
 
-void MPU6500_Init(I2C_HandleTypeDef *hi2c)
+/* ================================================================
+   MPU6500_Check
+   Call this first — sets the I2C handle and verifies the chip.
+   ================================================================ */
+MPU_Status MPU6500_Check(I2C_HandleTypeDef *hi2c)
 {
     mpu_i2c = hi2c;
+
+    uint8_t id = 0;
+    if(HAL_I2C_Mem_Read(mpu_i2c, MPU6500_ADDR,
+                        WHO_AM_I_REG, 1, &id, 1, 100) != HAL_OK)
+        return MPU_NO_I2C;     /* bus failed — not connected */
+
+    if(id != WHO_AM_I_VAL)
+        return MPU_WRONG_ID;   /* wrong chip on that address */
+
+    return MPU_OK;
+}
+
+void MPU6500_Init(void)
+{
     uint8_t data;
 
     /* Wake up device */
