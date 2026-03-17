@@ -2,65 +2,130 @@
 
 /* ================================================================
    ENCODER.C
-   Encoder 0 → TIM1  PE9=CH1, PE11=CH2  (left wheel)
-   Encoder 1 → TIM8  PC6=CH1, PC7=CH2   (right wheel)
-
-   FIX: Original code had both entries pointing to &htim1,
-        reading the same wheel twice. TIM8 added for encoder 1.
+   Encoder 0 → TIM1  ENC1_A(PE9)=CH1, ENC1_B(PE11)=CH2  — left wheel
+   Encoder 1 → TIM8  ENC2_A(PC6)=CH1, ENC2_B(PC7) =CH2  — right wheel
 
    HC-020K is single-channel (no direction output).
-   Direction sign is applied in GENERAL_Update() using
-   the commanded motor direction state.
+   CH2 disconnected — counter counts in one direction only.
+   Direction sign must be applied externally from motor command state.
 
    Both timers configured in CubeMX:
-     Combined Channels → Encoder Mode
-     ARR = 65535, Prescaler = 0, Filter = 4, Pull-Up
+     Encoder Mode TI12, ARR=65535, Prescaler=0
    ================================================================ */
 
-extern TIM_HandleTypeDef htim1;   /* Encoder 0 — APB2, 168MHz timer clock */
-extern TIM_HandleTypeDef htim8;   /* Encoder 1 — APB2, 168MHz timer clock */
+extern TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef htim8;
 
-static TIM_HandleTypeDef* ENCODER_TIM[ENCODER_COUNT] = {&htim1, &htim8};
+static TIM_HandleTypeDef* ENC_TIM[ENCODER_COUNT] = {
+    &htim1,   /* Encoder 0 — ENC1_A/ENC1_B */
+    &htim8    /* Encoder 1 — ENC2_A/ENC2_B */
+};
 
-static int32_t encoder_total[ENCODER_COUNT] = {0, 0};
-static int16_t encoder_last[ENCODER_COUNT]  = {0, 0};
+static int32_t    enc_total[ENCODER_COUNT]         = {0};
+static int16_t    enc_last[ENCODER_COUNT]           = {0};
+static float      enc_speed_raw[ENCODER_COUNT]      = {0.0f};
+static float      enc_speed_display[ENCODER_COUNT]  = {0.0f};
+static ENC_Status enc_status[ENCODER_COUNT]         = {ENC_NO_SIGNAL};
+static int32_t    enc_last_total[ENCODER_COUNT]     = {0};
 
-
+/* ================================================================
+   ENCODER_Init
+   ================================================================ */
 void ENCODER_Init(void)
 {
-    HAL_TIM_Encoder_Start(ENCODER_TIM[0], TIM_CHANNEL_ALL);
-    HAL_TIM_Encoder_Start(ENCODER_TIM[1], TIM_CHANNEL_ALL);
+    HAL_TIM_Encoder_Start(ENC_TIM[0], TIM_CHANNEL_ALL);
+    HAL_TIM_Encoder_Start(ENC_TIM[1], TIM_CHANNEL_ALL);
 
-    encoder_last[0] = (int16_t)__HAL_TIM_GET_COUNTER(ENCODER_TIM[0]);
-    encoder_last[1] = (int16_t)__HAL_TIM_GET_COUNTER(ENCODER_TIM[1]);
+    enc_last[0] = (int16_t)__HAL_TIM_GET_COUNTER(ENC_TIM[0]);
+    enc_last[1] = (int16_t)__HAL_TIM_GET_COUNTER(ENC_TIM[1]);
 }
 
-
+/* ================================================================
+   ENCODER_Update
+   Called from TIM6 interrupt every 1ms.
+   int16_t cast handles 16-bit counter overflow automatically.
+   ================================================================ */
 void ENCODER_Update(void)
 {
+    static int32_t speed_sum[ENCODER_COUNT] = {0};
+    static uint8_t speed_cnt[ENCODER_COUNT] = {0};
+
     for(uint8_t i = 0; i < ENCODER_COUNT; i++)
     {
-        int16_t now  = (int16_t)__HAL_TIM_GET_COUNTER(ENCODER_TIM[i]);
-        int16_t diff = now - encoder_last[i];
+        int16_t now  = (int16_t)__HAL_TIM_GET_COUNTER(ENC_TIM[i]);
+        int16_t diff = now - enc_last[i];
 
-        encoder_last[i]   = now;
-        encoder_total[i] += diff;
+        enc_last[i]   = now;
+        enc_total[i] += diff;
+
+        /* Raw speed — updated every 1ms, used by PID */
+        enc_speed_raw[i] = (float)diff * 1000.0f;
+
+        /* Smoothed speed — averaged over 10ms, used by OLED */
+        speed_sum[i] += diff;
+        speed_cnt[i]++;
+        if(speed_cnt[i] >= 10)
+        {
+            enc_speed_display[i] = (float)speed_sum[i] * 100.0f;
+            speed_sum[i]         = 0;
+            speed_cnt[i]         = 0;
+        }
+
+        /* Status — flips to OK on first pulse received */
+        if(enc_total[i] != enc_last_total[i])
+        {
+            enc_status[i]     = ENC_OK;
+            enc_last_total[i] = enc_total[i];
+        }
     }
 }
 
-
-int32_t ENCODER_GetCount(uint8_t encoder)
+/* ================================================================
+   ENCODER_GetCount — total accumulated counts since last reset
+   ================================================================ */
+int32_t ENCODER_GetCount(uint8_t index)
 {
-    if(encoder >= ENCODER_COUNT) return 0;
-    return encoder_total[encoder];
+    if(index >= ENCODER_COUNT) return 0;
+    return enc_total[index];
 }
 
-
-void ENCODER_Reset(uint8_t encoder)
+/* ================================================================
+   ENCODER_GetSpeed — smoothed, for OLED display
+   ================================================================ */
+float ENCODER_GetSpeed(uint8_t index)
 {
-    if(encoder >= ENCODER_COUNT) return;
+    if(index >= ENCODER_COUNT) return 0.0f;
+    return enc_speed_display[index];
+}
 
-    encoder_total[encoder] = 0;
-    encoder_last[encoder]  = 0;
-    __HAL_TIM_SET_COUNTER(ENCODER_TIM[encoder], 0);
+/* ================================================================
+   ENCODER_GetSpeed_PID — raw, for PID controller
+   ================================================================ */
+float ENCODER_GetSpeed_PID(uint8_t index)
+{
+    if(index >= ENCODER_COUNT) return 0.0f;
+    return enc_speed_raw[index];
+}
+
+/* ================================================================
+   ENCODER_GetStatus
+   ================================================================ */
+ENC_Status ENCODER_GetStatus(uint8_t index)
+{
+    if(index >= ENCODER_COUNT) return ENC_NO_SIGNAL;
+    return enc_status[index];
+}
+
+/* ================================================================
+   ENCODER_Reset
+   ================================================================ */
+void ENCODER_Reset(uint8_t index)
+{
+    if(index >= ENCODER_COUNT) return;
+
+    enc_total[index]     = 0;
+    enc_last[index]      = 0;
+    enc_last_total[index] = 0;
+    enc_status[index]    = ENC_NO_SIGNAL;
+    __HAL_TIM_SET_COUNTER(ENC_TIM[index], 0);
 }

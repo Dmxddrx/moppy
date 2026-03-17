@@ -1,5 +1,6 @@
-../Core/Src/general.c:39:6:GENERAL_Init	3
-../Core/Src/general.c:118:13:GENERAL_OLED_Page_Sensors	5
-../Core/Src/general.c:154:13:GENERAL_OLED_Page_Ultrasonic	9
-../Core/Src/general.c:203:6:GENERAL_OLED_Debug	4
-../Core/Src/general.c:227:6:GENERAL_Update	5
+../Core/Src/general.c:42:6:GENERAL_Init	3
+../Core/Src/general.c:124:13:GENERAL_OLED_Page_Sensors	5
+../Core/Src/general.c:160:13:GENERAL_OLED_Page_Ultrasonic	9
+../Core/Src/general.c:206:13:GENERAL_OLED_Page_Encoders	3
+../Core/Src/general.c:233:6:GENERAL_OLED_Debug	6
+../Core/Src/general.c:258:6:GENERAL_Update	5

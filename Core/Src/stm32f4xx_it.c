@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "ultrasonic.h"
+#include "encoder.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -288,4 +289,11 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
             ULTRASONIC_CaptureCallback(TIM_CHANNEL_4);
     }
 }
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    if(htim->Instance == TIM6)
+        ENCODER_Update();
+}
+
 /* USER CODE END 1 */

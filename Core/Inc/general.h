@@ -2,7 +2,7 @@
 #define GENERAL_H
 
 /*#include "coverage.h"
-#include "encoder.h"
+
 #include "hmc5883l.h"
 #include "ir.h"
 #include "main.h"
@@ -25,6 +25,7 @@
 #include "oled.h"
 #include "ultrasonic.h"
 #include "btns.h"
+#include "encoder.h"
 
 #define ENABLE_OLED_SELFTEST   0
 #define ENABLE_OLED_DEBUG      1

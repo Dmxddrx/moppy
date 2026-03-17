@@ -5,6 +5,8 @@
 extern I2C_HandleTypeDef hi2c1;   /* MPU6500 + HMC5883L */
 extern I2C_HandleTypeDef hi2c2;   /* OLED    			*/
 
+extern TIM_HandleTypeDef htim6;
+
 static MPU6500_RawData  imu_raw;
 static HMC5883L_RawData mag_raw;
 
@@ -25,7 +27,8 @@ static HMC_Status hmc_status;
 	typedef enum {
 	    PAGE_SENSORS    = 0,
 	    PAGE_ULTRASONIC = 1,
-	    PAGE_COUNT      = 2
+		PAGE_ENCODERS   = 2,
+	    PAGE_COUNT      = 3
 	} OLED_Page;
 
 	static OLED_Page current_page = PAGE_SENSORS;
@@ -55,6 +58,9 @@ void GENERAL_Init(void)
     }
     ULTRASONIC_Init();
     BTNS_Init();
+
+    HAL_TIM_Base_Start_IT(&htim6);   /* starts 1ms tick for ENCODER_Update */
+    ENCODER_Init();
 
     OLED_Init(&hi2c2);
     HAL_Delay(100);
@@ -194,6 +200,30 @@ static void GENERAL_OLED_Page_Ultrasonic(void)
 
 }
 
+/* ================================================================
+   Page 2 — Encoder counts and speed
+   ================================================================ */
+static void GENERAL_OLED_Page_Encoders(void)
+{
+    char line[32];
+
+    /* Status */
+    if(ENCODER_GetStatus(0) == ENC_NO_SIGNAL) OLED_Print(0, 0, "E1:NO");
+    else                                       OLED_Print(0, 0, "E1:OK");
+
+    if(ENCODER_GetStatus(1) == ENC_NO_SIGNAL) OLED_Print(0, 10, "E2:NO");
+    else 										OLED_Print(0, 10, "E2:OK");
+
+    snprintf(line, sizeof(line), "E1 CNT:%-8ld", (long)ENCODER_GetCount(0));
+    OLED_Print(0, 23, line);
+    snprintf(line, sizeof(line), "E1 SPD:%-8.0f", ENCODER_GetSpeed(0));
+    OLED_Print(0, 33, line);
+
+    snprintf(line, sizeof(line), "E2 CNT:%-8ld", (long)ENCODER_GetCount(1));
+    OLED_Print(0, 43, line);
+    snprintf(line, sizeof(line), "E2 SPD:%-8.0f", ENCODER_GetSpeed(1));
+    OLED_Print(0, 53, line);
+}
 
 /* ================================================================
    GENERAL_OLED_Debug — MPU6500 raw values
@@ -213,6 +243,7 @@ void GENERAL_OLED_Debug(void)
     {
         case PAGE_SENSORS:    GENERAL_OLED_Page_Sensors();    break;
         case PAGE_ULTRASONIC: GENERAL_OLED_Page_Ultrasonic(); break;
+        case PAGE_ENCODERS:   GENERAL_OLED_Page_Encoders();   break;
         default: break;
     }
 
