@@ -8,7 +8,7 @@ extern TIM_HandleTypeDef htim2;
 static GPIO_TypeDef* TRIG_PORT[4] = {
     TRIG1_GPIO_Port,   /* PA8  */
     TRIG2_GPIO_Port,   /* PB1  */
-    TRIG3_GPIO_Port,   /* PB2  */
+    TRIG3_GPIO_Port,   /* PE8  */
     TRIG4_GPIO_Port    /* PD7  */
 };
 

@@ -126,24 +126,24 @@ static void GENERAL_OLED_Page_Sensors(void)
     else if(hmc_status == HMC_WRONG_ID) OLED_Print(0, 10, "HMC:xID");
     else                                OLED_Print(0, 10, "HMC:OK");
 
-    snprintf(line, sizeof(line), "MX:%d", (int)mag_raw.mx);
+    snprintf(line, sizeof(line), "MX:%-6d", (int)mag_raw.mx);
     OLED_Print(0, 26, line);
-    snprintf(line, sizeof(line), "MY:%d", (int)mag_raw.my);
+    snprintf(line, sizeof(line), "MY:%-6d", (int)mag_raw.my);
     OLED_Print(0, 36, line);
-    snprintf(line, sizeof(line), "MZ:%d", (int)mag_raw.mz);
+    snprintf(line, sizeof(line), "MZ:%-6d", (int)mag_raw.mz);
     OLED_Print(0, 46, line);
 
-    snprintf(line, sizeof(line), "AX:%d", (int)imu_raw.ax);
+    snprintf(line, sizeof(line), "AX:%-6d", (int)imu_raw.ax);
     OLED_Print(60, 0, line);
-    snprintf(line, sizeof(line), "AY:%d", (int)imu_raw.ay);
+    snprintf(line, sizeof(line), "AY:%-6d", (int)imu_raw.ay);
     OLED_Print(60, 10, line);
-    snprintf(line, sizeof(line), "AZ:%d", (int)imu_raw.az);
+    snprintf(line, sizeof(line), "AZ:%-6d", (int)imu_raw.az);
     OLED_Print(60, 20, line);
-    snprintf(line, sizeof(line), "GX:%d", (int)imu_raw.gx);
+    snprintf(line, sizeof(line), "GX:%-6d", (int)imu_raw.gx);
     OLED_Print(60, 30, line);
-    snprintf(line, sizeof(line), "GY:%d", (int)imu_raw.gy);
+    snprintf(line, sizeof(line), "GY:%-6d", (int)imu_raw.gy);
     OLED_Print(60, 40, line);
-    snprintf(line, sizeof(line), "GZ:%d", (int)imu_raw.gz);
+    snprintf(line, sizeof(line), "GZ:%-6d", (int)imu_raw.gz);
     OLED_Print(60, 50, line);
 }
 

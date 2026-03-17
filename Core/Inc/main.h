@@ -87,10 +87,10 @@ void Error_Handler(void);
 #define M3_PWM_GPIO_Port GPIOB
 #define TRIG2_Pin GPIO_PIN_1
 #define TRIG2_GPIO_Port GPIOB
-#define TRIG3_Pin GPIO_PIN_2
-#define TRIG3_GPIO_Port GPIOB
 #define M6_BIN2_Pin GPIO_PIN_7
 #define M6_BIN2_GPIO_Port GPIOE
+#define TRIG3_Pin GPIO_PIN_8
+#define TRIG3_GPIO_Port GPIOE
 #define ENC1_A_Pin GPIO_PIN_9
 #define ENC1_A_GPIO_Port GPIOE
 #define ENC1_B_Pin GPIO_PIN_11
