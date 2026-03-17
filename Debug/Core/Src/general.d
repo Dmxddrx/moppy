@@ -30,9 +30,9 @@ Core/Src/general.o: ../Core/Src/general.c ../Core/Inc/general.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
- ../Core/Inc/mpu6500.h ../Core/Inc/hmc5883l.h ../Core/Inc/oled.h \
- ../Core/Inc/ultrasonic.h ../Core/Inc/btns.h ../Core/Inc/encoder.h \
- ../Core/Inc/motor.h ../Core/Inc/motor_pwm.h
+ ../Core/Inc/mpu6500.h ../Core/Inc/hmc5883l.h ../Core/Inc/ultrasonic.h \
+ ../Core/Inc/encoder.h ../Core/Inc/motor.h ../Core/Inc/motor_pwm.h \
+ ../Core/Inc/btns.h ../Core/Inc/oled.h
 ../Core/Inc/general.h:
 ../Core/Inc/main.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
@@ -68,9 +68,9 @@ Core/Src/general.o: ../Core/Src/general.c ../Core/Inc/general.h \
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h:
 ../Core/Inc/mpu6500.h:
 ../Core/Inc/hmc5883l.h:
-../Core/Inc/oled.h:
 ../Core/Inc/ultrasonic.h:
-../Core/Inc/btns.h:
 ../Core/Inc/encoder.h:
 ../Core/Inc/motor.h:
 ../Core/Inc/motor_pwm.h:
+../Core/Inc/btns.h:
+../Core/Inc/oled.h:

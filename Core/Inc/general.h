@@ -22,11 +22,11 @@
 #include "main.h"
 #include "mpu6500.h"
 #include "hmc5883l.h"
-#include "oled.h"
 #include "ultrasonic.h"
-#include "btns.h"
 #include "encoder.h"
 #include "motor.h"
+#include "btns.h"
+#include "oled.h"
 
 #define ENABLE_OLED_SELFTEST   0
 #define ENABLE_OLED_DEBUG      1
