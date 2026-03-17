@@ -1,5 +1,6 @@
 #include "general.h"
 #include <stdio.h>
+#include <string.h>
 
 extern I2C_HandleTypeDef hi2c1;   /* MPU6500 + HMC5883L */
 extern I2C_HandleTypeDef hi2c2;   /* OLED    			*/
@@ -154,16 +155,43 @@ static void GENERAL_OLED_Page_Ultrasonic(void)
 {
     char line[32];
 
-    OLED_Print(0, 0, "-- ULTRASONIC --");
+    /* Status line — all 4 in one row */
+    char ok_line[32]  = "S";
+    char no_line[32]  = "S";
 
-    snprintf(line, sizeof(line), "S1:%luus", ultrasonic[0].pulse_us);
-    OLED_Print(0, 14, line);
-    snprintf(line, sizeof(line), "S2:%luus", ultrasonic[1].pulse_us);
-    OLED_Print(0, 24, line);
-    snprintf(line, sizeof(line), "S3:%luus", ultrasonic[2].pulse_us);
-    OLED_Print(0, 34, line);
-    snprintf(line, sizeof(line), "S4:%luus", ultrasonic[3].pulse_us);
-    OLED_Print(0, 44, line);
+    for(uint8_t i = 0; i < 4; i++)
+    {
+        char tag[3];
+        snprintf(tag, sizeof(tag), "%d", i+1);
+        if(ultrasonic[i].status == US_OK)
+            strncat(ok_line, tag, sizeof(ok_line) - strlen(ok_line) - 1);
+        else
+            strncat(no_line, tag, sizeof(no_line) - strlen(no_line) - 1);
+    }
+
+    if(strlen(ok_line) > 2) strncat(ok_line, ":OK", sizeof(ok_line) - strlen(ok_line) - 1);
+    else                     strncpy(ok_line, "        ", sizeof(ok_line));  /* blank if none */
+
+    if(strlen(no_line) > 2) strncat(no_line, ":NO", sizeof(no_line) - strlen(no_line) - 1);
+    else                     strncpy(no_line, "        ", sizeof(no_line));  /* blank if none */
+
+    OLED_Print(0,  0, ok_line);   /* "S 123:OK" — left  column */
+    OLED_Print(65, 0, no_line);   /* "S 4:NO"  — right column */
+
+
+    /* Values */
+    if(ultrasonic[0].status == US_NO_ECHO) OLED_Print(0, 16, "S1:NO ECHO    ");
+    else { snprintf(line, sizeof(line), "S1:%-8lu", ultrasonic[0].pulse_us); OLED_Print(0, 16, line); }
+
+    if(ultrasonic[1].status == US_NO_ECHO) OLED_Print(0, 26, "S2:NO ECHO    ");
+    else { snprintf(line, sizeof(line), "S2:%-8lu", ultrasonic[1].pulse_us); OLED_Print(0, 26, line); }
+
+    if(ultrasonic[2].status == US_NO_ECHO) OLED_Print(0, 36, "S3:NO ECHO    ");
+    else { snprintf(line, sizeof(line), "S3:%-8lu", ultrasonic[2].pulse_us); OLED_Print(0, 36, line); }
+
+    if(ultrasonic[3].status == US_NO_ECHO) OLED_Print(0, 46, "S4:NO ECHO    ");
+    else { snprintf(line, sizeof(line), "S4:%-8lu", ultrasonic[3].pulse_us); OLED_Print(0, 46, line); }
+
 }
 
 

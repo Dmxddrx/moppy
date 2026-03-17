@@ -38,8 +38,11 @@ typedef enum {
     US_MEASURING = 1,
 } US_State;
 
+#define US_TIMEOUT_US  30000   /* 30ms — beyond this = no sensor or out of range */
+
 static US_State  state[4]      = {US_IDLE};
 static uint32_t  rise_tick[4]  = {0};
+static uint32_t  trigger_tick[4]  = {0};   /* when trigger was fired */
 
 /* Public data — read from general.c */
 ULTRASONIC_Data ultrasonic[4]  = {0};
@@ -49,6 +52,9 @@ ULTRASONIC_Data ultrasonic[4]  = {0};
    ================================================================ */
 void ULTRASONIC_Init(void)
 {
+    for(uint8_t i = 0; i < 4; i++)
+        ultrasonic[i].status = US_NO_ECHO;   /* unknown until first echo */
+
     /* Start input capture interrupt on all 4 echo channels */
     HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);
     HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_2);
@@ -65,20 +71,37 @@ void ULTRASONIC_Init(void)
 void ULTRASONIC_Trigger(uint8_t index)
 {
     if(index > 3) return;
-    if(state[index] == US_MEASURING) return;  /* previous echo not done */
+
+    /* Timeout check — echo never came from previous trigger */
+    if(state[index] == US_MEASURING)
+    {
+        uint32_t now = __HAL_TIM_GET_COUNTER(&htim2);
+        uint32_t elapsed = (now >= trigger_tick[index])
+                         ? (now - trigger_tick[index])
+                         : (0xFFFFFFFF - trigger_tick[index] + now);
+
+        if(elapsed > US_TIMEOUT_US)
+        {
+            /* No echo received — mark as disconnected */
+            ultrasonic[index].pulse_us = 0;
+            ultrasonic[index].ready    = 0;
+            ultrasonic[index].status   = US_NO_ECHO;
+            rise_tick[index]           = 0;
+            state[index]               = US_IDLE;
+        }
+        else
+            return;   /* still within timeout window */
+    }
 
     ultrasonic[index].ready = 0;
-    state[index] = US_IDLE;
 
-    /* 10µs trigger pulse — TIM2 is 1MHz so we use counter directly */
     HAL_GPIO_WritePin(TRIG_PORT[index], TRIG_PIN[index], GPIO_PIN_SET);
-
     uint32_t start = __HAL_TIM_GET_COUNTER(&htim2);
-    while((__HAL_TIM_GET_COUNTER(&htim2) - start) < 10);   /* wait 10µs */
-
+    while((__HAL_TIM_GET_COUNTER(&htim2) - start) < 10);
     HAL_GPIO_WritePin(TRIG_PORT[index], TRIG_PIN[index], GPIO_PIN_RESET);
 
-    state[index] = US_MEASURING;
+    trigger_tick[index] = __HAL_TIM_GET_COUNTER(&htim2);
+    state[index]        = US_MEASURING;
 }
 
 /* ================================================================
@@ -88,7 +111,6 @@ void ULTRASONIC_Trigger(uint8_t index)
    ================================================================ */
 void ULTRASONIC_CaptureCallback(uint32_t channel)
 {
-    /* Map TIM channel to sensor index */
     uint8_t i;
     switch(channel)
     {
@@ -105,10 +127,10 @@ void ULTRASONIC_CaptureCallback(uint32_t channel)
 
     if(rise_tick[i] == 0)
     {
-        /* First capture = rising edge */
-        rise_tick[i] = captured;
+        /* Rising edge — sensor is alive */
+        rise_tick[i]          = captured;
+        ultrasonic[i].status  = US_OK;
 
-        /* Switch polarity to catch falling edge */
         TIM_IC_InitTypeDef cfg = {0};
         cfg.ICPolarity  = TIM_INPUTCHANNELPOLARITY_FALLING;
         cfg.ICSelection = TIM_ICSELECTION_DIRECTTI;
@@ -119,20 +141,16 @@ void ULTRASONIC_CaptureCallback(uint32_t channel)
     }
     else
     {
-        /* Second capture = falling edge — calculate width */
+        /* Falling edge — calculate pulse width */
         uint32_t fall = captured;
         uint32_t rise = rise_tick[i];
 
-        /* Handle 32-bit timer overflow */
         ultrasonic[i].pulse_us = (fall >= rise) ? (fall - rise)
                                                  : (0xFFFFFFFF - rise + fall);
-        ultrasonic[i].ready = 1;
+        ultrasonic[i].ready  = 1;
+        rise_tick[i]         = 0;
+        state[i]             = US_IDLE;
 
-        /* Reset for next measurement */
-        rise_tick[i] = 0;
-        state[i]     = US_IDLE;
-
-        /* Restore rising edge polarity */
         TIM_IC_InitTypeDef cfg = {0};
         cfg.ICPolarity  = TIM_INPUTCHANNELPOLARITY_RISING;
         cfg.ICSelection = TIM_ICSELECTION_DIRECTTI;
