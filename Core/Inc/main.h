@@ -79,6 +79,10 @@ void Error_Handler(void);
 #define SR04_ECHO3_GPIO_Port GPIOA
 #define SR04_ECHO4_Pin GPIO_PIN_3
 #define SR04_ECHO4_GPIO_Port GPIOA
+#define M1_PWM_Pin GPIO_PIN_6
+#define M1_PWM_GPIO_Port GPIOA
+#define M2_PWM_Pin GPIO_PIN_7
+#define M2_PWM_GPIO_Port GPIOA
 #define M2_BIN1_Pin GPIO_PIN_4
 #define M2_BIN1_GPIO_Port GPIOC
 #define M2_BIN2_Pin GPIO_PIN_5
@@ -133,10 +137,6 @@ void Error_Handler(void);
 #define M3_AIN2_GPIO_Port GPIOD
 #define TRIG4_Pin GPIO_PIN_7
 #define TRIG4_GPIO_Port GPIOD
-#define M1_PWM_Pin GPIO_PIN_4
-#define M1_PWM_GPIO_Port GPIOB
-#define M2_PWM_Pin GPIO_PIN_5
-#define M2_PWM_GPIO_Port GPIOB
 #define SCL1_Pin GPIO_PIN_6
 #define SCL1_GPIO_Port GPIOB
 #define SDA1_Pin GPIO_PIN_7

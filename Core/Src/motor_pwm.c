@@ -4,8 +4,8 @@
 
 /* ================================================================
    MOTOR_PWM.C
-   TIM3 CH1/2/3 → Motors 1-3  (PA6, PA7, PB0)
-   TIM4 CH1/2/3 → Motors 4-6  (PD12, PD13, PD14)
+   TIM3 CH1/2/3 → Motors 1-3  (PB4=M1, PA5=M2, PB0=M3)
+   TIM4 CH1/2/3 → Motors 4-6  (PD12=M4, PD13=M5, PD14=M6)
 
    Both timers: Prescaler=3, ARR=999, 84MHz → 21kHz PWM
    PWM range: 0 – 999

@@ -61,6 +61,7 @@ void GENERAL_Init(void)
 
     HAL_TIM_Base_Start_IT(&htim6);   /* starts 1ms tick for ENCODER_Update */
     ENCODER_Init();
+    MOTOR_Init();
 
     OLED_Init(&hi2c2);
     HAL_Delay(100);
@@ -283,6 +284,17 @@ void GENERAL_Update(void)
         us_index = (us_index + 1) % 4;
         us_last_tick = HAL_GetTick();
     }
+
+    /* ============================================================
+       MOTOR CONTROL — add here, sensors already fresh above
+       ============================================================ */
+    MOTOR_Set(0, MOTOR_FORWARD,  500);   /* M1 forward  50% */
+    MOTOR_Set(1, MOTOR_BACKWARD, 750);   /* M2 backward 75% */
+    MOTOR_Set(2, MOTOR_STOP,     0);     /* M3 stop         */
+    MOTOR_Set(3, MOTOR_FORWARD,  999);   /* M4 forward 100% */
+    MOTOR_Set(4, MOTOR_FORWARD,  500);   /* M5 forward  50% */
+    MOTOR_Set(5, MOTOR_BACKWARD, 500);   /* M6 backward 50% */
+    /* ============================================================ */
 
     /* Button — check and advance page if pressed */
     BTNS_Update();

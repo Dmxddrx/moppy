@@ -26,6 +26,7 @@
 #include "ultrasonic.h"
 #include "btns.h"
 #include "encoder.h"
+#include "motor.h"
 
 #define ENABLE_OLED_SELFTEST   0
 #define ENABLE_OLED_DEBUG      1
