@@ -15,13 +15,10 @@
 
 #define MOTOR_SPEED_MAX  999
 
-// Initialize motor GPIOs and PWM
 void MOTOR_Init(void);
-
-// Set motor direction (0: stop, 1: forward, 2: backward)
 void MOTOR_SetDir(uint8_t motor_index, uint8_t direction);
-
-// Set motor speed and direction
 void MOTOR_Set(uint8_t motor_index, uint8_t direction, uint16_t speed);
+void MOTOR_StandbyAll(void);   /* pull all STBY LOW  — coast  */
+void MOTOR_WakeAll(void);      /* pull all STBY HIGH — enable */
 
 #endif

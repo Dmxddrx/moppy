@@ -103,6 +103,10 @@ void Error_Handler(void);
 #define OLED_SCL_GPIO_Port GPIOB
 #define OLED_SDA_Pin GPIO_PIN_11
 #define OLED_SDA_GPIO_Port GPIOB
+#define M2_STBY_Pin GPIO_PIN_8
+#define M2_STBY_GPIO_Port GPIOD
+#define M3_STBY_Pin GPIO_PIN_9
+#define M3_STBY_GPIO_Port GPIOD
 #define M4_PWM_Pin GPIO_PIN_12
 #define M4_PWM_GPIO_Port GPIOD
 #define M5_PWM_Pin GPIO_PIN_13
@@ -127,6 +131,8 @@ void Error_Handler(void);
 #define IR1_EXTI0_GPIO_Port GPIOD
 #define IR2_EXTI1_Pin GPIO_PIN_1
 #define IR2_EXTI1_GPIO_Port GPIOD
+#define M1_STBY_Pin GPIO_PIN_2
+#define M1_STBY_GPIO_Port GPIOD
 #define IR3_EXTI3_Pin GPIO_PIN_3
 #define IR3_EXTI3_GPIO_Port GPIOD
 #define IR4_EXTI4_Pin GPIO_PIN_4

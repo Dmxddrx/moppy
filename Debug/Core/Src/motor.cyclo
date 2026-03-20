@@ -1,3 +1,7 @@
-../Core/Src/motor.c:56:6:MOTOR_Init	1
-../Core/Src/motor.c:61:6:MOTOR_SetDir	4
-../Core/Src/motor.c:85:6:MOTOR_Set	2
+../Core/Src/motor.c:88:13:MOTOR_EnableDriver	2
+../Core/Src/motor.c:99:13:MOTOR_DisableDriver	2
+../Core/Src/motor.c:107:6:MOTOR_Init	2
+../Core/Src/motor.c:116:6:MOTOR_SetDir	4
+../Core/Src/motor.c:142:6:MOTOR_Set	3
+../Core/Src/motor.c:154:6:MOTOR_StandbyAll	2
+../Core/Src/motor.c:163:6:MOTOR_WakeAll	2
