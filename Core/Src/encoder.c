@@ -1,5 +1,5 @@
 #include "encoder.h"
-
+#include "math.h"
 /* ================================================================
    ENCODER.C
    Encoder 0 → TIM1  ENC1_A(PE9)=CH1, ENC1_B(PE11)=CH2  — left wheel
@@ -66,7 +66,7 @@ void ENCODER_Update(void)
         speed_cnt[i]++;
         if(speed_cnt[i] >= 10)
         {
-            enc_speed_display[i] = (float)speed_sum[i] * 100.0f;
+        	enc_speed_display[i] = fabsf((float)speed_sum[i] * 100.0f);
             speed_sum[i]         = 0;
             speed_cnt[i]         = 0;
         }

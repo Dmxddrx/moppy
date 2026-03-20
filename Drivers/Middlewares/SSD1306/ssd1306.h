@@ -37,7 +37,7 @@ typedef enum {
 	SSD1306_COLOR_WHITE = 0x01  /*!< Pixel is set. Color depends on LCD */
 } SSD1306_COLOR_t;
 
-
+void ssd1306_I2C_SetHandle(I2C_HandleTypeDef *hi2c);
 uint8_t SSD1306_Init(void);
 void SSD1306_UpdateScreen(void);
 void SSD1306_ToggleInvert(void);

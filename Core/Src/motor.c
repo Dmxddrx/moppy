@@ -165,3 +165,21 @@ void MOTOR_WakeAll(void)
     for(uint8_t i = 0; i < 3; i++)
         MOTOR_EnableDriver(i);
 }
+
+/* ================================================================
+   MOTOR_GetDirection — returns +1 forward, -1 backward, 0 stop
+   Used by odometry to apply sign to encoder counts
+   ================================================================ */
+int8_t MOTOR_GetDirection(uint8_t motor_index)
+{
+    if(motor_index >= 6) return 0;
+
+    uint8_t in1 = HAL_GPIO_ReadPin(DIR1_PORT[motor_index],
+                                    DIR1_PIN[motor_index]);
+    uint8_t in2 = HAL_GPIO_ReadPin(DIR2_PORT[motor_index],
+                                    DIR2_PIN[motor_index]);
+
+    if(in1 == GPIO_PIN_SET   && in2 == GPIO_PIN_RESET) return  1;
+    if(in1 == GPIO_PIN_RESET && in2 == GPIO_PIN_SET)   return -1;
+    return 0;   /* stop or brake */
+}

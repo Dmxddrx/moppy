@@ -155,10 +155,12 @@ void SSD1306_DrawBitmap(int16_t x, int16_t y, const unsigned char* bitmap, int16
 }
 
 
+static I2C_HandleTypeDef *ssd1306_hi2c = NULL;
 
-
-
-
+void ssd1306_I2C_SetHandle(I2C_HandleTypeDef *hi2c)
+{
+    ssd1306_hi2c = hi2c;
+}
 
 
 uint8_t SSD1306_Init(void) {

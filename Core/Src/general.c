@@ -9,9 +9,13 @@ extern TIM_HandleTypeDef htim6;
 
 static MPU6500_RawData  imu_raw;
 static HMC5883L_RawData mag_raw;
-
 static MPU_Status mpu_status;
 static HMC_Status hmc_status;
+
+/* Localisation state */
+static Map         robot_map;
+static RobotPose   pose;
+static Orientation orientation;
 
 #if ENABLE_OLED_SELFTEST
 	static HMC5883L_SelfTestData st_result;
@@ -41,6 +45,13 @@ static HMC_Status hmc_status;
    ================================================================ */
 void GENERAL_Init(void)
 {
+    /* ── OLED first — always show something on screen ────────── */
+    OLED_Init(&hi2c2);
+    HAL_Delay(100);
+    OLED_Clear();
+    OLED_Print(0, 0,  "Booting...");
+    OLED_Print(0, 12, "Init sensors");
+    OLED_Update();
 
     mpu_status = MPU6500_Check(&hi2c1);
     if(mpu_status == MPU_OK)
@@ -54,8 +65,8 @@ void GENERAL_Init(void)
 	#if ENABLE_OLED_SELFTEST
         st_result = HMC5883L_SelfTest();
     #endif/* run once, store result */
-
     }
+
     ULTRASONIC_Init();
     BTNS_Init();
 
@@ -63,9 +74,20 @@ void GENERAL_Init(void)
     ENCODER_Init();
     MOTOR_Init();
 
-    OLED_Init(&hi2c2);
-    HAL_Delay(100);
+    /* Localisation init */
+    ODOM_Init();
+    SLAM_Init();
+    Map_Init(&robot_map);
+    IR_Init();
+
+    /* ── Boot complete ───────────────────────────────────────── */
     OLED_Clear();
+    OLED_Print(0, 0, "Ready");
+    OLED_Print(0, 12, mpu_status == MPU_OK  ? "MPU:OK"  : "MPU:FAIL");
+    OLED_Print(0, 22, hmc_status == HMC_OK  ? "HMC:OK"  : "HMC:FAIL");
+    OLED_Update();
+    HAL_Delay(1000);   /* show status for 1 second before main loop */
+
 
 #if ENABLE_OLED_SELFTEST
     /* Show self-test screen immediately */
@@ -162,14 +184,16 @@ static void GENERAL_OLED_Page_Ultrasonic(void)
 {
     char line[32];
 
-    /* Status line — all 4 in one row */
-    char ok_line[32]  = "S";
-    char no_line[32]  = "S";
+    static uint32_t last_pulse[4] = {0};
+
+    /* ---- y=0 : status row ------------------------------------ */
+    char ok_line[32] = "S";
+    char no_line[32] = "S";
 
     for(uint8_t i = 0; i < 4; i++)
     {
         char tag[3];
-        snprintf(tag, sizeof(tag), "%d", i+1);
+        snprintf(tag, sizeof(tag), "%d", i + 1);
         if(ultrasonic[i].status == US_OK)
             strncat(ok_line, tag, sizeof(ok_line) - strlen(ok_line) - 1);
         else
@@ -177,28 +201,53 @@ static void GENERAL_OLED_Page_Ultrasonic(void)
     }
 
     if(strlen(ok_line) > 2) strncat(ok_line, ":OK", sizeof(ok_line) - strlen(ok_line) - 1);
-    else                     strncpy(ok_line, "        ", sizeof(ok_line));  /* blank if none */
+    else                    strncpy(ok_line, "        ", sizeof(ok_line));
 
     if(strlen(no_line) > 2) strncat(no_line, ":NO", sizeof(no_line) - strlen(no_line) - 1);
-    else                     strncpy(no_line, "        ", sizeof(no_line));  /* blank if none */
+    else                    strncpy(no_line, "        ", sizeof(no_line));
 
-    OLED_Print(0,  0, ok_line);   /* "S 123:OK" — left  column */
-    OLED_Print(65, 0, no_line);   /* "S 4:NO"  — right column */
+    OLED_Print(0,  0, ok_line);
+    OLED_Print(65, 0, no_line);
 
+    /* ---- y=14 : S1 ------------------------------------------- */
+    if(ultrasonic[0].status == US_NO_ECHO)
+        OLED_Print(0, 14, "S1:NO ECHO    ");
+    else
+    {
+        if(ultrasonic[0].ready) last_pulse[0] = ultrasonic[0].pulse_us;
+        snprintf(line, sizeof(line), "S1:%-8lu", last_pulse[0]);
+        OLED_Print(0, 14, line);
+    }
 
-    /* Values */
-    if(ultrasonic[0].status == US_NO_ECHO) OLED_Print(0, 16, "S1:NO ECHO    ");
-    else { snprintf(line, sizeof(line), "S1:%-8lu", ultrasonic[0].pulse_us); OLED_Print(0, 16, line); }
+    /* ---- y=24 : S2 ------------------------------------------- */
+    if(ultrasonic[1].status == US_NO_ECHO)
+        OLED_Print(0, 24, "S2:NO ECHO    ");
+    else
+    {
+        if(ultrasonic[1].ready) last_pulse[1] = ultrasonic[1].pulse_us;
+        snprintf(line, sizeof(line), "S2:%-8lu", last_pulse[1]);
+        OLED_Print(0, 24, line);
+    }
 
-    if(ultrasonic[1].status == US_NO_ECHO) OLED_Print(0, 26, "S2:NO ECHO    ");
-    else { snprintf(line, sizeof(line), "S2:%-8lu", ultrasonic[1].pulse_us); OLED_Print(0, 26, line); }
+    /* ---- y=34 : S3 ------------------------------------------- */
+    if(ultrasonic[2].status == US_NO_ECHO)
+        OLED_Print(0, 34, "S3:NO ECHO    ");
+    else
+    {
+        if(ultrasonic[2].ready) last_pulse[2] = ultrasonic[2].pulse_us;
+        snprintf(line, sizeof(line), "S3:%-8lu", last_pulse[2]);
+        OLED_Print(0, 34, line);
+    }
 
-    if(ultrasonic[2].status == US_NO_ECHO) OLED_Print(0, 36, "S3:NO ECHO    ");
-    else { snprintf(line, sizeof(line), "S3:%-8lu", ultrasonic[2].pulse_us); OLED_Print(0, 36, line); }
-
-    if(ultrasonic[3].status == US_NO_ECHO) OLED_Print(0, 46, "S4:NO ECHO    ");
-    else { snprintf(line, sizeof(line), "S4:%-8lu", ultrasonic[3].pulse_us); OLED_Print(0, 46, line); }
-
+    /* ---- y=44 : S4 ------------------------------------------- */
+    if(ultrasonic[3].status == US_NO_ECHO)
+        OLED_Print(0, 44, "S4:NO ECHO    ");
+    else
+    {
+        if(ultrasonic[3].ready) last_pulse[3] = ultrasonic[3].pulse_us;
+        snprintf(line, sizeof(line), "S4:%-8lu", last_pulse[3]);
+        OLED_Print(0, 44, line);
+    }
 }
 
 /* ================================================================
@@ -208,22 +257,46 @@ static void GENERAL_OLED_Page_Encoders(void)
 {
     char line[32];
 
-    /* Status */
-    if(ENCODER_GetStatus(0) == ENC_NO_SIGNAL) OLED_Print(0, 0, "E1:NO");
-    else                                       OLED_Print(0, 0, "E1:OK");
+    #define ENC_CPR        20
+    #define RAD_PER_COUNT  (6.28318f / ENC_CPR)
 
-    if(ENCODER_GetStatus(1) == ENC_NO_SIGNAL) OLED_Print(0, 10, "E2:NO");
-    else 										OLED_Print(0, 10, "E2:OK");
+    RobotPose p    = ODOM_GetPose();
+    int32_t   cnt0 = ENCODER_GetCount(0);
+    int32_t   cnt1 = ENCODER_GetCount(1);
+    float     spd0 = ENCODER_GetSpeed(0);
+    float     spd1 = ENCODER_GetSpeed(1);
 
-    snprintf(line, sizeof(line), "E1 CNT:%-8ld", (long)ENCODER_GetCount(0));
-    OLED_Print(0, 23, line);
-    snprintf(line, sizeof(line), "E1 SPD:%-8.0f", ENCODER_GetSpeed(0));
-    OLED_Print(0, 33, line);
+    /* y=0 : status */
+    OLED_Print(0,  0, ENCODER_GetStatus(0) == ENC_NO_SIGNAL ? "E1:NO" : "E1:OK");
+    OLED_Print(65, 0, ENCODER_GetStatus(1) == ENC_NO_SIGNAL ? "E2:NO" : "E2:OK");
 
-    snprintf(line, sizeof(line), "E2 CNT:%-8ld", (long)ENCODER_GetCount(1));
-    OLED_Print(0, 43, line);
-    snprintf(line, sizeof(line), "E2 SPD:%-8.0f", ENCODER_GetSpeed(1));
-    OLED_Print(0, 53, line);
+    /* y=10 : raw pulse count */
+    snprintf(line, sizeof(line), "C1:%-5ld", (long)cnt0);
+    OLED_Print(0, 10, line);
+    snprintf(line, sizeof(line), "C2:%-5ld", (long)cnt1);
+    OLED_Print(65, 10, line);
+
+    /* y=20 : rotations = CNT / 20 */
+    snprintf(line, sizeof(line), "R1:%-4.1f", (float)cnt0 / ENC_CPR);
+    OLED_Print(0, 20, line);
+    snprintf(line, sizeof(line), "R2:%-4.1f", (float)cnt1 / ENC_CPR);
+    OLED_Print(65, 20, line);
+
+    /* y=30 : speed rad/s  (0.5 = half rev/sec) */
+    snprintf(line, sizeof(line), "S1:%-4.2f", spd0 * RAD_PER_COUNT);
+    OLED_Print(0, 30, line);
+    snprintf(line, sizeof(line), "S2:%-4.2f", spd1 * RAD_PER_COUNT);
+    OLED_Print(65, 30, line);
+
+    /* y=40 : X / Y position in metres */
+    snprintf(line, sizeof(line), "X:%-+5.2f", p.x);
+    OLED_Print(0, 40, line);
+    snprintf(line, sizeof(line), "Y:%-+5.2f", p.y);
+    OLED_Print(65, 40, line);
+
+    /* y=50 : heading in degrees — full width */
+    snprintf(line, sizeof(line), "H: %-+7.1f deg", p.theta * 57.2958f);
+    OLED_Print(0, 50, line);
 }
 
 /* ================================================================
@@ -268,32 +341,105 @@ void GENERAL_Update(void)
     }
 #endif
 
-    if(mpu_status == MPU_OK)
-        MPU6500_ReadRaw(&imu_raw);
+    /* ---- dt calculation -------------------------------------- */
+    static uint32_t last_tick = 0;
+    uint32_t now = HAL_GetTick();
+    float dt = (now - last_tick) * 0.001f;   /* ms → seconds */
+    if(dt <= 0.0f || dt > 0.5f) dt = 0.01f; /* guard         */
+    last_tick = now;
 
-    if(hmc_status == HMC_OK)
-        HMC5883L_ReadRaw(&mag_raw);
+    /* ---- IMU + mag ------------------------------------------- */
+        if(mpu_status == MPU_OK)
+        {
+            if(MPU6500_ReadRaw(&imu_raw) != HAL_OK)
+                HAL_I2C_DeInit(&hi2c1);   /* reset bus on I2C failure */
+        }
 
-    /* Trigger one sensor per 60ms cycle — avoids echo crosstalk */
+        if(hmc_status == HMC_OK)
+            HMC5883L_ReadRaw(&mag_raw);
+
+    /* ---- Orientation (stable) -------------------------------- */
+    STABLE_Update(&imu_raw, &mag_raw, dt);
+    orientation = STABLE_GetOrientation();
+
+    /* ---- Odometry -------------------------------------------- */
+    static int32_t last_enc[2] = {0, 0};
+    int32_t enc0 = ENCODER_GetCount(0);
+    int32_t enc1 = ENCODER_GetCount(1);
+
+    /* Apply direction sign from motor command state
+       Motor 0 = left wheel, Motor 1 = right wheel  */
+    int8_t dir_left  = MOTOR_GetDirection(0);
+    int8_t dir_right = MOTOR_GetDirection(1);
+
+    float left_dist  = (float)(enc0 - last_enc[0]) * DIST_PER_COUNT
+                       * (float)MOTOR_GetDirection(0);
+    float right_dist = (float)(enc1 - last_enc[1]) * DIST_PER_COUNT
+                       * (float)MOTOR_GetDirection(1);
+
+    last_enc[0] = enc0;
+    last_enc[1] = enc1;
+
+    ODOM_Update(left_dist, right_dist, dt);
+    pose = ODOM_GetPose();
+
+    /* ---- SLAM — blend odom pose with IMU yaw ----------------- */
+    SLAM_Update(&pose, orientation);
+
+    /* ---- Update map with corrected pose ---------------------- */
+    Map_UpdateRobotPose(&robot_map,
+                        pose.x,
+                        pose.y,
+                        pose.theta);   /* theta already in radians */
+
+    /* ---- Ultrasonic — one per 60ms cycle --------------------- */
     static uint8_t  us_index     = 0;
     static uint32_t us_last_tick = 0;
+
+    static const float us_angles[4] = {
+        US_ANGLE_0, US_ANGLE_1, US_ANGLE_2, US_ANGLE_3
+    };
 
     if(HAL_GetTick() - us_last_tick >= 60)
     {
         ULTRASONIC_Trigger(us_index);
+
+        /* Convert pulse_us → metres  (pulse_us / 58 = cm) */
+        if(ultrasonic[us_index].status == US_OK &&
+           ultrasonic[us_index].ready)
+        {
+            float dist_m = (ultrasonic[us_index].pulse_us / 58.0f)
+                           * 0.01f;
+            Map_UpdateUltrasonic(&robot_map, dist_m,
+                                 us_angles[us_index]);
+        }
+
         us_index = (us_index + 1) % 4;
         us_last_tick = HAL_GetTick();
     }
 
-    /* ============================================================
-       MOTOR CONTROL — add here, sensors already fresh above
-       ============================================================ */
-    MOTOR_Set(0, MOTOR_FORWARD,  500);   /* M1 forward  50% */
-    MOTOR_Set(1, MOTOR_BACKWARD, 500);   /* M2 backward 75% */
-    MOTOR_Set(2, MOTOR_STOP,     500);     /* M3 stop         */
-    MOTOR_Set(3, MOTOR_FORWARD,  500);   /* M4 forward 100% */
-    MOTOR_Set(4, MOTOR_FORWARD,  500);   /* M5 forward  50% */
-    MOTOR_Set(5, MOTOR_BACKWARD, 500);   /* M6 backward 50% */
+    /* ---- IR sensors ------------------------------------------
+    for(uint8_t i = 0; i < 4; i++)
+        Map_UpdateIR(&robot_map, i, IR_Read(i));*/
+
+    /* ---- Motors ---------------------------------------------- */
+    static uint8_t motors_enabled = 0;
+
+    if(!motors_enabled)
+    {
+        MOTOR_WakeAll();        /* pull all STBY HIGH — enable drivers */
+        motors_enabled = 1;
+    }
+
+    /* Wheel motors — these feed odometry */
+    MOTOR_Set(0, MOTOR_FORWARD,  200);   /* M1 left wheel  */
+    MOTOR_Set(1, MOTOR_FORWARD,  200);   /* M2 right wheel */
+
+    /* Other mechanisms — no encoders, no odometry impact */
+    MOTOR_Set(2, MOTOR_STOP, 0);         /* M3 */
+    MOTOR_Set(3, MOTOR_STOP, 0);         /* M4 */
+    MOTOR_Set(4, MOTOR_STOP, 0);         /* M5 */
+    MOTOR_Set(5, MOTOR_STOP, 0);         /* M6 */
     /* ============================================================ */
 
     /* Button — check and advance page if pressed */
@@ -301,7 +447,10 @@ void GENERAL_Update(void)
     if(BTNS_Get_OLEDPage() == BTN_PRESSED)
         current_page = (current_page + 1) % PAGE_COUNT;
 
-#if ENABLE_OLED_DEBUG
-    GENERAL_OLED_Debug();
-#endif
+    static uint32_t oled_last_tick = 0;
+    if(HAL_GetTick() - oled_last_tick >= 100)
+    {
+        oled_last_tick = HAL_GetTick();
+        GENERAL_OLED_Debug();
+    }
 }

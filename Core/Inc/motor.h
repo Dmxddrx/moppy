@@ -20,5 +20,6 @@ void MOTOR_SetDir(uint8_t motor_index, uint8_t direction);
 void MOTOR_Set(uint8_t motor_index, uint8_t direction, uint16_t speed);
 void MOTOR_StandbyAll(void);   /* pull all STBY LOW  — coast  */
 void MOTOR_WakeAll(void);      /* pull all STBY HIGH — enable */
+int8_t MOTOR_GetDirection(uint8_t motor_index);
 
 #endif

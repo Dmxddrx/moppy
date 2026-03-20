@@ -60,7 +60,7 @@ void MPU6500_Init(void)
     HAL_I2C_Mem_Write(mpu_i2c, MPU6500_ADDR, ACCEL_CONFIG, 1, &data, 1, 100);
 }
 
-void MPU6500_ReadRaw(MPU6500_RawData *data)
+HAL_StatusTypeDef MPU6500_ReadRaw(MPU6500_RawData *data)
 {
     uint8_t buf[14] = {0};
 
@@ -69,18 +69,17 @@ void MPU6500_ReadRaw(MPU6500_RawData *data)
 
     if(status != HAL_OK)
     {
-        /* I2C failed — sensor not connected or wrong address
-           data stays zero, robot continues safely            */
         data->ax = 0; data->ay = 0; data->az = 0;
         data->gx = 0; data->gy = 0; data->gz = 0;
-        return;
+        return HAL_ERROR;   /* ← was just return, now returns status */
     }
 
     data->ax = (int16_t)((buf[0]  << 8) | buf[1]);
     data->ay = (int16_t)((buf[2]  << 8) | buf[3]);
     data->az = (int16_t)((buf[4]  << 8) | buf[5]);
-    /* buf[6] buf[7] = temperature — skipped, correct */
     data->gx = (int16_t)((buf[8]  << 8) | buf[9]);
     data->gy = (int16_t)((buf[10] << 8) | buf[11]);
     data->gz = (int16_t)((buf[12] << 8) | buf[13]);
+
+    return HAL_OK;
 }

@@ -38,7 +38,7 @@ typedef enum {
     US_MEASURING = 1,
 } US_State;
 
-#define US_TIMEOUT_US  30000   /* 30ms — beyond this = no sensor or out of range */
+#define US_TIMEOUT_US  50000   /* 30ms — beyond this = no sensor or out of range */
 
 static US_State  state[4]      = {US_IDLE};
 static uint32_t  rise_tick[4]  = {0};

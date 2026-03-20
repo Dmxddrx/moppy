@@ -65,10 +65,10 @@ void Error_Handler(void);
 #define M5_AIN2_GPIO_Port GPIOE
 #define M6_BIN1_Pin GPIO_PIN_6
 #define M6_BIN1_GPIO_Port GPIOE
-#define M1_AIN1_Pin GPIO_PIN_0
-#define M1_AIN1_GPIO_Port GPIOC
-#define M1_AIN2_Pin GPIO_PIN_1
+#define M1_AIN2_Pin GPIO_PIN_0
 #define M1_AIN2_GPIO_Port GPIOC
+#define M1_AIN1_Pin GPIO_PIN_1
+#define M1_AIN1_GPIO_Port GPIOC
 #define BTN_OLED_PAGE_Pin GPIO_PIN_2
 #define BTN_OLED_PAGE_GPIO_Port GPIOC
 #define SR04_ECHO1_Pin GPIO_PIN_0

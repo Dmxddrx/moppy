@@ -27,6 +27,7 @@ typedef struct
 
 MPU_Status MPU6500_Check(I2C_HandleTypeDef *hi2c);
 void MPU6500_Init(void);
-void MPU6500_ReadRaw(MPU6500_RawData *data);
+//void MPU6500_ReadRaw(MPU6500_RawData *data);
+HAL_StatusTypeDef MPU6500_ReadRaw(MPU6500_RawData *data);
 
 #endif

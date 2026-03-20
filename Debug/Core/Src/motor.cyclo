@@ -5,3 +5,4 @@
 ../Core/Src/motor.c:142:6:MOTOR_Set	3
 ../Core/Src/motor.c:154:6:MOTOR_StandbyAll	2
 ../Core/Src/motor.c:163:6:MOTOR_WakeAll	2
+../Core/Src/motor.c:173:8:MOTOR_GetDirection	6
