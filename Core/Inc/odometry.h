@@ -1,7 +1,7 @@
 #ifndef ODOMETRY_H
 #define ODOMETRY_H
 
-#include "mpu6500.h"
+#include <mpu6050.h>
 
 /* ── RobotPose ──────────────────────────────────────────────────
    x, y  : metres in world frame (x=East, y=North)

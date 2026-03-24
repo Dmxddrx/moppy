@@ -46,7 +46,7 @@ static void render_map_page(void)
     int robot_cx = Map_RobotCellX(&g_map);
     int robot_cy = Map_RobotCellY(&g_map);
 
-    SSD1306_Fill(SSD1306_COLOR_BLACK);
+    OLED_Clear(); // Already an OLED wrapper!
 
     for (int row = 0; row < VIEW_ROWS; row++) {
         for (int col = 0; col < VIEW_COLS; col++) {
@@ -61,28 +61,19 @@ static void render_map_page(void)
             switch (cell) {
 
                 case CELL_UNKNOWN:
-                    /* White border, 1 px thick                    */
-                    SSD1306_DrawRectangle(px, py,
-                                          BLOCK_PX, BLOCK_PX,
-                                          SSD1306_COLOR_WHITE);
+                    /* White border, 1 px thick */
+                    OLED_DrawOutline(px, py, BLOCK_PX, BLOCK_PX);
                     break;
 
                 case CELL_FREE:
-                    /* Fully white (cleaned)                       */
-                    SSD1306_DrawFilledRectangle(px, py,
-                                                BLOCK_PX, BLOCK_PX,
-                                                SSD1306_COLOR_WHITE);
+                    /* Fully white (cleaned) */
+                    OLED_Rectangle(px, py, BLOCK_PX, BLOCK_PX);
                     break;
 
                 case CELL_OCCUPIED:
-                    /* White block with 10×10 black obstacle mark  */
-                    SSD1306_DrawFilledRectangle(px, py,
-                                                BLOCK_PX, BLOCK_PX,
-                                                SSD1306_COLOR_WHITE);
-                    SSD1306_DrawFilledRectangle(
-                        px + OBSTACLE_OFF, py + OBSTACLE_OFF,
-                        OBSTACLE_PX, OBSTACLE_PX,
-                        SSD1306_COLOR_BLACK);
+                    /* White block with 10×10 black obstacle mark */
+                    OLED_Rectangle(px, py, BLOCK_PX, BLOCK_PX);
+                    OLED_ClearArea(px + OBSTACLE_OFF, py + OBSTACLE_OFF, OBSTACLE_PX, OBSTACLE_PX);
                     break;
 
                 default: break;
@@ -91,313 +82,437 @@ static void render_map_page(void)
             /* ── Robot marker ────────────────────────────────── */
             if (grid_x == robot_cx && grid_y == robot_cy) {
                 /* 4×4 black square at block centre on cleaned cell,
-                   4×4 white square on unknown cell               */
-                SSD1306_COLOR_t marker =
-                    (cell == CELL_UNKNOWN) ? SSD1306_COLOR_WHITE
-                                           : SSD1306_COLOR_BLACK;
-                SSD1306_DrawFilledRectangle(px + 6, py + 6,
-                                             4, 4, marker);
+                   4×4 white square on unknown cell */
+                if (cell == CELL_UNKNOWN) {
+                    OLED_Rectangle(px + 6, py + 6, 4, 4); // White
+                } else {
+                    OLED_ClearArea(px + 6, py + 6, 4, 4); // Black
+                }
             }
         }
     }
 
-    SSD1306_UpdateScreen();
+    OLED_Update(); // Swapped to your custom update function
 }
 
-/* ═══════════════════════════════════════════════════════════════ */
-/*  OLED ULTRASONIC PAGE                                            */
-/* ═══════════════════════════════════════════════════════════════ */
+/* ================================================================
+   Page 1 — Ultrasonic raw pulse widths
+   ================================================================ */
 static void render_ultrasonic_page(void)
 {
-    char buf[22];
-    SSD1306_Fill(SSD1306_COLOR_BLACK);
+    char line[32];
 
-    /* Header */
-    SSD1306_GotoXY(0, 0);
-    SSD1306_Puts("-- Ultrasonic --", &Font_7x10, SSD1306_COLOR_WHITE);
+    static uint32_t last_pulse[4] = {0};
 
-    /* Sensor angles: 0=Front, 1=Right, 2=Rear, 3=Left            */
-    static const char * const labels[4] = {"F", "R", "B", "L"};
-    float d[4];
-    for (int i = 0; i < 4; i++) {
-        d[i] = ULTRASONIC_GetDistance(i);
+    /* ---- y=0 : status row ------------------------------------ */
+    char ok_line[32] = "S";
+    char no_line[32] = "S";
+
+    for(uint8_t i = 0; i < 4; i++)
+    {
+        char tag[3];
+        snprintf(tag, sizeof(tag), "%d", i + 1);
+        if(ultrasonic[i].status == US_OK)
+            strncat(ok_line, tag, sizeof(ok_line) - strlen(ok_line) - 1);
+        else
+            strncat(no_line, tag, sizeof(no_line) - strlen(no_line) - 1);
     }
 
-    /* Row 1: Front + Right */
-    if (d[0] >= 0.0f)
-        snprintf(buf, sizeof(buf), "F:%5.2fm", (double)d[0]);
+    if(strlen(ok_line) > 2) strncat(ok_line, ":OK", sizeof(ok_line) - strlen(ok_line) - 1);
+    else                    strncpy(ok_line, "        ", sizeof(ok_line));
+
+    if(strlen(no_line) > 2) strncat(no_line, ":NO", sizeof(no_line) - strlen(no_line) - 1);
+    else                    strncpy(no_line, "        ", sizeof(no_line));
+
+    OLED_Print(0,  0, ok_line);
+    OLED_Print(65, 0, no_line);
+
+    /* ---- y=14 : S1 ------------------------------------------- */
+    if(ultrasonic[0].status == US_NO_ECHO)
+        OLED_Print(0, 14, "S1:NO ECHO    ");
     else
-        snprintf(buf, sizeof(buf), "F: ----m");
-    SSD1306_GotoXY(0, 14);
-    SSD1306_Puts(buf, &Font_7x10, SSD1306_COLOR_WHITE);
+    {
+        if(ultrasonic[0].ready) last_pulse[0] = ultrasonic[0].pulse_us;
+        snprintf(line, sizeof(line), "S1:%-8lu", last_pulse[0]);
+        OLED_Print(0, 14, line);
+    }
 
-    if (d[1] >= 0.0f)
-        snprintf(buf, sizeof(buf), "R:%5.2fm", (double)d[1]);
+    /* ---- y=24 : S2 ------------------------------------------- */
+    if(ultrasonic[1].status == US_NO_ECHO)
+        OLED_Print(0, 24, "S2:NO ECHO    ");
     else
-        snprintf(buf, sizeof(buf), "R: ----m");
-    SSD1306_GotoXY(65, 14);
-    SSD1306_Puts(buf, &Font_7x10, SSD1306_COLOR_WHITE);
+    {
+        if(ultrasonic[1].ready) last_pulse[1] = ultrasonic[1].pulse_us;
+        snprintf(line, sizeof(line), "S2:%-8lu", last_pulse[1]);
+        OLED_Print(0, 24, line);
+    }
 
-    /* Row 2: Rear + Left */
-    if (d[2] >= 0.0f)
-        snprintf(buf, sizeof(buf), "B:%5.2fm", (double)d[2]);
+    /* ---- y=34 : S3 ------------------------------------------- */
+    if(ultrasonic[2].status == US_NO_ECHO)
+        OLED_Print(0, 34, "S3:NO ECHO    ");
     else
-        snprintf(buf, sizeof(buf), "B: ----m");
-    SSD1306_GotoXY(0, 28);
-    SSD1306_Puts(buf, &Font_7x10, SSD1306_COLOR_WHITE);
+    {
+        if(ultrasonic[2].ready) last_pulse[2] = ultrasonic[2].pulse_us;
+        snprintf(line, sizeof(line), "S3:%-8lu", last_pulse[2]);
+        OLED_Print(0, 34, line);
+    }
 
-    if (d[3] >= 0.0f)
-        snprintf(buf, sizeof(buf), "L:%5.2fm", (double)d[3]);
+    /* ---- y=44 : S4 ------------------------------------------- */
+    if(ultrasonic[3].status == US_NO_ECHO)
+        OLED_Print(0, 44, "S4:NO ECHO    ");
     else
-        snprintf(buf, sizeof(buf), "L: ----m");
-    SSD1306_GotoXY(65, 28);
-    SSD1306_Puts(buf, &Font_7x10, SSD1306_COLOR_WHITE);
-
-    /* Row 3: status bar */
-    snprintf(buf, sizeof(buf), "MPU:%s HMC:%s",
-             s_mpu_ok ? "OK" : "ER",
-             s_hmc_ok ? "OK" : "ER");
-    SSD1306_GotoXY(0, 42);
-    SSD1306_Puts(buf, &Font_7x10, SSD1306_COLOR_WHITE);
-
-    /* Row 4: sound speed reminder */
-    SSD1306_GotoXY(0, 54);
-    SSD1306_Puts("V=349.5m/s @30C", &Font_7x10, SSD1306_COLOR_WHITE);
-
-    SSD1306_UpdateScreen();
+    {
+        if(ultrasonic[3].ready) last_pulse[3] = ultrasonic[3].pulse_us;
+        snprintf(line, sizeof(line), "S4:%-8lu", last_pulse[3]);
+        OLED_Print(0, 44, line);
+    }
 }
 
-/* ═══════════════════════════════════════════════════════════════ */
-/*  OLED IMU PAGE                                                   */
-/* ═══════════════════════════════════════════════════════════════ */
-static void render_imu_page(void)
+/* ================================================================
+   Page 0 — MPU + HMC sensor data
+   ================================================================ */
+static void void render_imu_page(void)
 {
-    char buf[22];
-    SSD1306_Fill(SSD1306_COLOR_BLACK);
+    char line[32];
 
-    SSD1306_GotoXY(0, 0);
-    SSD1306_Puts("---- IMU ----", &Font_7x10, SSD1306_COLOR_WHITE);
+    if     (mpu_status == MPU_NO_I2C)   OLED_Print(0, 0, "MPU:xI2C");
+    else if(mpu_status == MPU_WRONG_ID) OLED_Print(0, 0, "MPU:xID");
+    else                                OLED_Print(0, 0, "MPU:OK");
 
-    /* Gyro rates in deg/s */
-    float gx = s_imu_raw.gx / 131.0f;
-    float gy = s_imu_raw.gy / 131.0f;
-    float gz = s_imu_raw.gz / 131.0f;
+    if     (hmc_status == HMC_NO_I2C)   OLED_Print(0, 10, "HMC:xI2C");
+    else if(hmc_status == HMC_WRONG_ID) OLED_Print(0, 10, "HMC:xID");
+    else                                OLED_Print(0, 10, "HMC:OK");
 
-    snprintf(buf, sizeof(buf), "Gx%+6.1f Gy%+6.1f", (double)gx, (double)gy);
-    SSD1306_GotoXY(0, 14);
-    SSD1306_Puts(buf, &Font_7x10, SSD1306_COLOR_WHITE);
+    snprintf(line, sizeof(line), "MX:%-6d", (int)mag_raw.mx);
+    OLED_Print(0, 26, line);
+    snprintf(line, sizeof(line), "MY:%-6d", (int)mag_raw.my);
+    OLED_Print(0, 36, line);
+    snprintf(line, sizeof(line), "MZ:%-6d", (int)mag_raw.mz);
+    OLED_Print(0, 46, line);
 
-    snprintf(buf, sizeof(buf), "Gz%+6.1f d/s", (double)gz);
-    SSD1306_GotoXY(0, 28);
-    SSD1306_Puts(buf, &Font_7x10, SSD1306_COLOR_WHITE);
-
-    /* Roll / Pitch / Yaw */
-    snprintf(buf, sizeof(buf), "R%+6.1f P%+6.1f",
-             (double)s_orient.roll, (double)s_orient.pitch);
-    SSD1306_GotoXY(0, 42);
-    SSD1306_Puts(buf, &Font_7x10, SSD1306_COLOR_WHITE);
-
-    snprintf(buf, sizeof(buf), "Yaw: %6.1f deg", (double)s_orient.yaw);
-    SSD1306_GotoXY(0, 54);
-    SSD1306_Puts(buf, &Font_7x10, SSD1306_COLOR_WHITE);
-
-    SSD1306_UpdateScreen();
+    snprintf(line, sizeof(line), "AX:%-6d", (int)imu_raw.ax);
+    OLED_Print(60, 0, line);
+    snprintf(line, sizeof(line), "AY:%-6d", (int)imu_raw.ay);
+    OLED_Print(60, 10, line);
+    snprintf(line, sizeof(line), "AZ:%-6d", (int)imu_raw.az);
+    OLED_Print(60, 20, line);
+    snprintf(line, sizeof(line), "GX:%-6d", (int)imu_raw.gx);
+    OLED_Print(60, 30, line);
+    snprintf(line, sizeof(line), "GY:%-6d", (int)imu_raw.gy);
+    OLED_Print(60, 40, line);
+    snprintf(line, sizeof(line), "GZ:%-6d", (int)imu_raw.gz);
+    OLED_Print(60, 50, line);
 }
 
-/* ═══════════════════════════════════════════════════════════════ */
-/*  OLED POSITION PAGE                                              */
-/* ═══════════════════════════════════════════════════════════════ */
-static void render_position_page(void)
+/* ================================================================
+   Page 2 — Encoder counts and speed
+   ================================================================ */
+static void GENERAL_OLED_Page_Encoders(void)
 {
-    char buf[22];
-    SSD1306_Fill(SSD1306_COLOR_BLACK);
+    char line[32];
 
-    SSD1306_GotoXY(0, 0);
-    SSD1306_Puts("-- Position --", &Font_7x10, SSD1306_COLOR_WHITE);
+    #define ENC_CPR        20
+    #define RAD_PER_COUNT  (6.28318f / ENC_CPR)
 
-    snprintf(buf, sizeof(buf), "X: %7.3f m", (double)s_pose.x);
-    SSD1306_GotoXY(0, 14);
-    SSD1306_Puts(buf, &Font_7x10, SSD1306_COLOR_WHITE);
+    RobotPose p    = ODOM_GetPose();
+    int32_t   cnt0 = ENCODER_GetCount(0);
+    int32_t   cnt1 = ENCODER_GetCount(1);
+    float     spd0 = ENCODER_GetSpeed(0);
+    float     spd1 = ENCODER_GetSpeed(1);
 
-    snprintf(buf, sizeof(buf), "Y: %7.3f m", (double)s_pose.y);
-    SSD1306_GotoXY(0, 28);
-    SSD1306_Puts(buf, &Font_7x10, SSD1306_COLOR_WHITE);
+    /* y=0 : status */
+    OLED_Print(0,  0, ENCODER_GetStatus(0) == ENC_NO_SIGNAL ? "E1:NO" : "E1:OK");
+    OLED_Print(65, 0, ENCODER_GetStatus(1) == ENC_NO_SIGNAL ? "E2:NO" : "E2:OK");
 
-    snprintf(buf, sizeof(buf), "H: %6.1f deg", (double)s_pose.theta);
-    SSD1306_GotoXY(0, 42);
-    SSD1306_Puts(buf, &Font_7x10, SSD1306_COLOR_WHITE);
+    /* y=10 : raw pulse count */
+    snprintf(line, sizeof(line), "C1:%-5ld", (long)cnt0);
+    OLED_Print(0, 10, line);
+    snprintf(line, sizeof(line), "C2:%-5ld", (long)cnt1);
+    OLED_Print(65, 10, line);
 
-    snprintf(buf, sizeof(buf), "Spd:%4.2fm/s Cl:%lu",
-             (double)ODOM_GetSpeed(),
-             (unsigned long)g_map.cells_cleaned);
-    SSD1306_GotoXY(0, 54);
-    SSD1306_Puts(buf, &Font_7x10, SSD1306_COLOR_WHITE);
+    /* y=20 : rotations = CNT / 20 */
+    snprintf(line, sizeof(line), "R1:%-4.1f", (float)cnt0 / ENC_CPR);
+    OLED_Print(0, 20, line);
+    snprintf(line, sizeof(line), "R2:%-4.1f", (float)cnt1 / ENC_CPR);
+    OLED_Print(65, 20, line);
 
-    SSD1306_UpdateScreen();
+    /* y=30 : speed rad/s  (0.5 = half rev/sec) */
+    snprintf(line, sizeof(line), "S1:%-4.2f", spd0 * RAD_PER_COUNT);
+    OLED_Print(0, 30, line);
+    snprintf(line, sizeof(line), "S2:%-4.2f", spd1 * RAD_PER_COUNT);
+    OLED_Print(65, 30, line);
+
+    /* y=40 : X / Y position in metres */
+    snprintf(line, sizeof(line), "X:%-+5.2f", p.x);
+    OLED_Print(0, 40, line);
+    snprintf(line, sizeof(line), "Y:%-+5.2f", p.y);
+    OLED_Print(65, 40, line);
+
+    /* y=50 : heading in degrees — full width */
+    snprintf(line, sizeof(line), "H: %-+7.1f deg", p.theta * 57.2958f);
+    OLED_Print(0, 50, line);
 }
 
-/* ═══════════════════════════════════════════════════════════════ */
-/*  GENERAL_Init                                                    */
-/* ═══════════════════════════════════════════════════════════════ */
+
+
+/* ================================================================
+   GENERAL_Init
+   ================================================================ */
 void GENERAL_Init(void)
 {
-    /* ── OLED ────────────────────────────────────────────────── */
-    ssd1306_I2C_SetHandle(&hi2c2);
-    SSD1306_Init();
-    SSD1306_Fill(SSD1306_COLOR_BLACK);
-    SSD1306_GotoXY(16, 20);
-    SSD1306_Puts("Floor Robot", &Font_11x18, SSD1306_COLOR_WHITE);
-    SSD1306_GotoXY(20, 44);
-    SSD1306_Puts("Initialising...", &Font_7x10, SSD1306_COLOR_WHITE);
-    SSD1306_UpdateScreen();
+    /* ── OLED first — always show something on screen ────────── */
+    OLED_Init(&hi2c2);
+    HAL_Delay(100);
+    OLED_Clear();
+    OLED_Print(0, 0,  "Floor Robot");
+    OLED_Print(0, 12, "Initialising...");
+    OLED_Update();
 
-    /* ── MPU6500 ─────────────────────────────────────────────── */
-    if (MPU6500_Check(&hi2c1) == MPU_OK) {
-        MPU6500_Init();   /* includes CalibrateGyro (~1 s) */
-        s_mpu_ok = 1;
-    }
+    mpu_status = MPU6500_Check(&hi2c1);
+    if(mpu_status == MPU_OK)
+        MPU6500_Init();
 
-    /* ── HMC5883L ────────────────────────────────────────────── */
-    if (HMC5883L_Check(&hi2c1) == HMC_OK) {
+    hmc_status = HMC5883L_Check(&hi2c1);
+    if(hmc_status == HMC_OK)
+    {
         HMC5883L_Init();
-        s_hmc_ok = 1;
+
+	#if ENABLE_OLED_SELFTEST
+        st_result = HMC5883L_SelfTest();
+    #endif/* run once, store result */
     }
 
-    /* ── Ultrasonic ──────────────────────────────────────────── */
     ULTRASONIC_Init();
-
-    /* ── Buttons ─────────────────────────────────────────────── */
     BTNS_Init();
 
-    /* ── Orientation filter ──────────────────────────────────── */
-    STABLE_Init();
+    HAL_TIM_Base_Start_IT(&htim6);   /* starts 1ms tick for ENCODER_Update */
+    ENCODER_Init();
+    MOTOR_Init();
 
-    /* ── Odometry + Map ─────────────────────────────────────── */
+    /* Localisation init */
     ODOM_Init();
-    Map_Init(&g_map);
+    SLAM_Init();
+    Map_Init(&robot_map);
+    IR_Init();
 
-    /* Splash hold */
-    HAL_Delay(500);
-    SSD1306_Fill(SSD1306_COLOR_BLACK);
-    SSD1306_UpdateScreen();
-}
+    /* ── Boot complete ───────────────────────────────────────── */
+    OLED_Clear();
+    OLED_Print(0, 0, "Ready");
+    OLED_Print(0, 12, mpu_status == MPU_OK  ? "MPU:OK"  : "MPU:FAIL");
+    OLED_Print(0, 22, hmc_status == HMC_OK  ? "HMC:OK"  : "HMC:FAIL");
+    OLED_Update();
+    HAL_Delay(1000);   /* show status for 1 second before main loop */
 
-/* ═══════════════════════════════════════════════════════════════ */
-/*  GENERAL_Update — call from main() while(1) loop               */
-/* ═══════════════════════════════════════════════════════════════ */
-void GENERAL_Update(void)
-{
-    uint32_t now = HAL_GetTick();
 
-    /* ── Buttons ─────────────────────────────────────────────── */
-    BTNS_Update();
-    if (BTNS_Get_OLEDPage() == BTN_PRESSED) {
-        s_oled_page = (s_oled_page + 1) % OLED_NUM_PAGES;
-    }
-
-    /* ── IMU + Orientation (10 ms period = 100 Hz) ───────────── */
-    if ((now - s_last_imu_ms) >= IMU_UPDATE_INTERVAL_MS) {
-        float dt = (float)(now - s_last_imu_ms) * 0.001f;
-        s_last_imu_ms = now;
-
-        if (s_mpu_ok) MPU6500_ReadRaw(&s_imu_raw);
-        if (s_hmc_ok) HMC5883L_ReadRaw(&s_mag_raw);
-
-        STABLE_Update(&s_imu_raw, &s_mag_raw, dt);
-        s_orient = STABLE_GetOrientation();
-
-        /* Update position from IMU (motors off — manual push)    */
-        ODOM_UpdateIMU(&s_imu_raw, s_orient.yaw, dt);
-        s_pose = ODOM_GetPose();
-
-        /* Mark current cell as cleaned                           */
-        Map_UpdateRobotPose(&g_map,
-                             s_pose.x, s_pose.y, s_pose.theta);
-    }
-
-    /* ── Ultrasonic round-robin (25 ms per sensor) ───────────── */
-    if ((now - s_last_us_ms) >= US_TRIGGER_INTERVAL_MS) {
-        s_last_us_ms = now;
-        ULTRASONIC_CheckTimeout();
-
-        /* Read the sensor that was triggered last period          */
-        uint8_t read_idx = (s_us_index + 3) % 4;   /* previous index */
-        float dist = ULTRASONIC_GetDistance(read_idx);
-
-        static const float sensor_angles[4] = {
-            US_ANGLE_0, US_ANGLE_1, US_ANGLE_2, US_ANGLE_3
-        };
-
-        if (dist > 0.05f) {   /* > 5 cm = plausible reading       */
-            Map_UpdateUltrasonic(&g_map, dist, sensor_angles[read_idx]);
-        }
-
-        /* Trigger the next sensor                                 */
-        ULTRASONIC_Trigger(s_us_index);
-        s_us_index = (s_us_index + 1) % 4;
-    }
-
-    /* ── OLED refresh (200 ms = 5 Hz) ───────────────────────── */
-    if ((now - s_last_oled_ms) >= OLED_UPDATE_INTERVAL_MS) {
-        s_last_oled_ms = now;
-
-#if ENABLE_OLED_DEBUG
-        GENERAL_OLED_Debug();
-#endif
-    }
-}
-
-/* ─────────────────────────────────────────────────────────────── */
-void GENERAL_ResetPose(void)
-{
-    ODOM_SetPose(15.0f, 15.0f, 0.0f);
-    ODOM_ResetVelocity();
-    s_pose = ODOM_GetPose();
-}
-
-/* ─────────────────────────────────────────────────────────────── */
-#if ENABLE_OLED_DEBUG
-void GENERAL_OLED_Debug(void)
-{
-    switch (s_oled_page) {
-        case OLED_PAGE_MAP:        render_map_page();        break;
-        case OLED_PAGE_ULTRASONIC: render_ultrasonic_page(); break;
-        case OLED_PAGE_IMU:        render_imu_page();        break;
-        case OLED_PAGE_POSITION:   render_position_page();   break;
-        default:                   render_map_page();        break;
-    }
-}
-#endif
-
-/* ─────────────────────────────────────────────────────────────── */
 #if ENABLE_OLED_SELFTEST
+    /* Show self-test screen immediately */
+    GENERAL_OLED_SelfTest();
+    boot_time = HAL_GetTick();   /* start 3s timer */
+#endif
+}
+
+/* ================================================================
+   GENERAL_OLED_SelfTest — shown once at boot
+   ================================================================ */
+#if ENABLE_OLED_SELFTEST
+
 void GENERAL_OLED_SelfTest(void)
 {
-    /* Draw all block types across the screen */
-    SSD1306_Fill(SSD1306_COLOR_BLACK);
+    char line[32];
+    OLED_Clear();
 
-    /* Row 0: unknown blocks (outlines) */
-    for (int c = 0; c < VIEW_COLS; c++) {
-        SSD1306_DrawRectangle(c * 16, 0, 16, 16, SSD1306_COLOR_WHITE);
-    }
-    /* Row 1: clean blocks */
-    for (int c = 0; c < VIEW_COLS; c++) {
-        SSD1306_DrawFilledRectangle(c * 16, 16, 16, 16, SSD1306_COLOR_WHITE);
-    }
-    /* Row 2: obstacle blocks */
-    for (int c = 0; c < VIEW_COLS; c++) {
-        SSD1306_DrawFilledRectangle(c * 16, 32, 16, 16, SSD1306_COLOR_WHITE);
-        SSD1306_DrawFilledRectangle(c * 16 + 3, 35, 10, 10,
-                                     SSD1306_COLOR_BLACK);
-    }
-    /* Row 3: robot marker */
-    for (int c = 0; c < VIEW_COLS; c++) {
-        SSD1306_DrawRectangle(c * 16, 48, 16, 16, SSD1306_COLOR_WHITE);
-    }
-    /* Robot at cell (2, 3) */
-    SSD1306_DrawFilledRectangle(2 * 16 + 6, 48 + 6, 4, 4,
-                                 SSD1306_COLOR_WHITE);
+    OLED_Print(0, 0, "-- SELF TEST --");
 
-    SSD1306_UpdateScreen();
+    /* MPU status */
+    if     (mpu_status == MPU_NO_I2C)   OLED_Print(0, 12, "MPU: NO I2C");
+    else if(mpu_status == MPU_WRONG_ID) OLED_Print(0, 12, "MPU: WRONG ID");
+    else                                OLED_Print(0, 12, "MPU: OK");
+
+    /* HMC status + self-test values */
+    if(hmc_status != HMC_OK)
+    {
+        if(hmc_status == HMC_NO_I2C)   OLED_Print(0, 22, "HMC: NO I2C");
+        else                           OLED_Print(0, 22, "HMC: WRONG ID");
+    }
+    else
+    {
+        OLED_Print(0, 22, "HMC: OK");
+        snprintf(line, sizeof(line), "X:%d", (int)st_result.mx);
+        OLED_Print(0, 34, line);
+        snprintf(line, sizeof(line), "Y:%d", (int)st_result.my);
+        OLED_Print(45, 34, line);
+        snprintf(line, sizeof(line), "Z:%d", (int)st_result.mz);
+        OLED_Print(90, 34, line);
+
+        /* pass/fail — expected 243-575 per axis */
+        uint8_t pass = (st_result.mx > 243 && st_result.mx < 575) &&
+                       (st_result.my > 243 && st_result.my < 575) &&
+                       (st_result.mz > 243 && st_result.mz < 575);
+        OLED_Print(0, 46, pass ? "HMC PASS" : "HMC FAIL");
+    }
+
+    OLED_Update();
 }
+
 #endif
+
+
+
+
+
+
+/* ================================================================
+   GENERAL_OLED_Debug — MPU6500 raw values
+   ================================================================ */
+#if ENABLE_OLED_DEBUG
+
+void GENERAL_OLED_Debug(void)
+{
+    /* Clear only on page change — avoids flicker every frame */
+    if(current_page != last_page)
+    {
+        OLED_Clear();
+        last_page = current_page;
+    }
+
+    switch(current_page)
+    {
+        case PAGE_SENSORS:    GENERAL_OLED_Page_Sensors();    break;
+        case PAGE_ULTRASONIC: GENERAL_OLED_Page_Ultrasonic(); break;
+        case PAGE_ENCODERS:   GENERAL_OLED_Page_Encoders();   break;
+        default: break;
+    }
+
+    OLED_Update();
+}
+
+#endif
+
+/* ================================================================
+   GENERAL_Update — call in main while(1)
+   ================================================================ */
+void GENERAL_Update(void)
+{
+#if ENABLE_OLED_SELFTEST
+    if(!boot_done)
+    {
+        if(HAL_GetTick() - boot_time >= 3000)
+            boot_done = 1;
+        else
+            return;   /* hold self-test screen for 3s */
+    }
+#endif
+
+    /* ---- dt calculation -------------------------------------- */
+    static uint32_t last_tick = 0;
+    uint32_t now = HAL_GetTick();
+    float dt = (now - last_tick) * 0.001f;   /* ms → seconds */
+    if(dt <= 0.0f || dt > 0.5f) dt = 0.01f; /* guard         */
+    last_tick = now;
+
+    /* ---- IMU + mag ------------------------------------------- */
+        if(mpu_status == MPU_OK)
+        {
+            if(MPU6500_ReadRaw(&imu_raw) != HAL_OK)
+                HAL_I2C_DeInit(&hi2c1);   /* reset bus on I2C failure */
+        }
+
+        if(hmc_status == HMC_OK)
+            HMC5883L_ReadRaw(&mag_raw);
+
+    /* ---- Orientation (stable) -------------------------------- */
+    STABLE_Update(&imu_raw, &mag_raw, dt);
+    orientation = STABLE_GetOrientation();
+
+    /* ---- Odometry -------------------------------------------- */
+    static int32_t last_enc[2] = {0, 0};
+    int32_t enc0 = ENCODER_GetCount(0);
+    int32_t enc1 = ENCODER_GetCount(1);
+
+    /* Apply direction sign from motor command state
+       Motor 0 = left wheel, Motor 1 = right wheel  */
+    int8_t dir_left  = MOTOR_GetDirection(0);
+    int8_t dir_right = MOTOR_GetDirection(1);
+
+    float left_dist  = (float)(enc0 - last_enc[0]) * DIST_PER_COUNT
+                       * (float)MOTOR_GetDirection(0);
+    float right_dist = (float)(enc1 - last_enc[1]) * DIST_PER_COUNT
+                       * (float)MOTOR_GetDirection(1);
+
+    last_enc[0] = enc0;
+    last_enc[1] = enc1;
+
+    ODOM_Update(left_dist, right_dist, dt);
+    pose = ODOM_GetPose();
+
+    /* ---- SLAM — blend odom pose with IMU yaw ----------------- */
+    SLAM_Update(&pose, orientation);
+
+    /* ---- Update map with corrected pose ---------------------- */
+    Map_UpdateRobotPose(&robot_map,
+                        pose.x,
+                        pose.y,
+                        pose.theta);   /* theta already in radians */
+
+    /* ---- Ultrasonic — one per 60ms cycle --------------------- */
+    static uint8_t  us_index     = 0;
+    static uint32_t us_last_tick = 0;
+
+    static const float us_angles[4] = {
+        US_ANGLE_0, US_ANGLE_1, US_ANGLE_2, US_ANGLE_3
+    };
+
+    if(HAL_GetTick() - us_last_tick >= 60)
+    {
+        ULTRASONIC_Trigger(us_index);
+
+        /* Convert pulse_us → metres  (pulse_us / 58 = cm) */
+        if(ultrasonic[us_index].status == US_OK &&
+           ultrasonic[us_index].ready)
+        {
+            float dist_m = (ultrasonic[us_index].pulse_us / 58.0f)
+                           * 0.01f;
+            Map_UpdateUltrasonic(&robot_map, dist_m,
+                                 us_angles[us_index]);
+        }
+
+        us_index = (us_index + 1) % 4;
+        us_last_tick = HAL_GetTick();
+    }
+
+    /* ---- IR sensors ------------------------------------------
+    for(uint8_t i = 0; i < 4; i++)
+        Map_UpdateIR(&robot_map, i, IR_Read(i));*/
+
+    /* ---- Motors ---------------------------------------------- */
+    static uint8_t motors_enabled = 0;
+
+    if(!motors_enabled)
+    {
+        MOTOR_WakeAll();        /* pull all STBY HIGH — enable drivers */
+        motors_enabled = 1;
+    }
+
+    /* Wheel motors — these feed odometry */
+    MOTOR_Set(0, MOTOR_FORWARD,  200);   /* M1 left wheel  */
+    MOTOR_Set(1, MOTOR_FORWARD,  200);   /* M2 right wheel */
+
+    /* Other mechanisms — no encoders, no odometry impact */
+    MOTOR_Set(2, MOTOR_STOP, 0);         /* M3 */
+    MOTOR_Set(3, MOTOR_STOP, 0);         /* M4 */
+    MOTOR_Set(4, MOTOR_STOP, 0);         /* M5 */
+    MOTOR_Set(5, MOTOR_STOP, 0);         /* M6 */
+    /* ============================================================ */
+
+    /* Button — check and advance page if pressed */
+    BTNS_Update();
+    if(BTNS_Get_OLEDPage() == BTN_PRESSED)
+        current_page = (current_page + 1) % PAGE_COUNT;
+
+    static uint32_t oled_last_tick = 0;
+    if(HAL_GetTick() - oled_last_tick >= 100)
+    {
+        oled_last_tick = HAL_GetTick();
+        GENERAL_OLED_Debug();
+    }
+}

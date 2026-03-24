@@ -83,3 +83,8 @@ void OLED_ClearArea(uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
 void OLED_Rectangle(uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
     SSD1306_DrawFilledRectangle(x, y, w, h, SSD1306_COLOR_WHITE);
 }
+
+// New: Draw an empty white outline
+void OLED_DrawOutline(uint8_t x, uint8_t y, uint8_t w, uint8_t h) {
+    SSD1306_DrawRectangle(x, y, w, h, SSD1306_COLOR_WHITE);
+}

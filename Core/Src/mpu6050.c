@@ -1,4 +1,4 @@
-#include "mpu6500.h"
+#include <mpu6050.h>
 
 /* I2C1: PB6 (SCL1), PB7 (SDA1) — shared with HMC5883L          */
 extern I2C_HandleTypeDef hi2c1;

@@ -1,8 +1,8 @@
 #ifndef GENERAL_H
 #define GENERAL_H
 
+#include <mpu6050.h>
 #include "main.h"
-#include "mpu6500.h"
 #include "hmc5883l.h"
 #include "ultrasonic.h"
 #include "encoder.h"

@@ -9,4 +9,5 @@ void OLED_Print(uint8_t x, uint8_t y, const char *str);
 void OLED_Update(void);
 void OLED_ClearArea(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
 void OLED_Rectangle(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
+void OLED_DrawOutline(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
 #endif

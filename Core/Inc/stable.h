@@ -1,7 +1,7 @@
 #ifndef STABLE_H
 #define STABLE_H
 
-#include "mpu6500.h"
+#include <mpu6050.h>
 #include "hmc5883l.h"
 
 typedef struct

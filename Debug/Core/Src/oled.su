@@ -5,3 +5,4 @@
 ../Core/Src/oled.c:66:6:OLED_Update	8	static
 ../Core/Src/oled.c:79:6:OLED_ClearArea	32	static
 ../Core/Src/oled.c:83:6:OLED_Rectangle	32	static
+../Core/Src/oled.c:88:6:OLED_DrawOutline	32	static
