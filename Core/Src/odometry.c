@@ -5,7 +5,7 @@
 /* ── Coordinate convention ──────────────────────────────────────
    World frame  : x = East, y = North
    Heading      : 0 = North, 90 = East, CW (compass convention)
-   MPU6500 body : ax = forward, ay = left, az = up
+   MPU6050 body : ax = forward, ay = left, az = up
                   (verify with your physical mounting)
 
    Rotation from body → world (compass heading θ):
@@ -62,7 +62,7 @@ void ODOM_Update(float left_dist, float right_dist, float dt)
 /*  Step 4: rotate body acceleration into world frame.              */
 /*  Step 5: integrate → velocity → position.                        */
 /* ─────────────────────────────────────────────────────────────── */
-void ODOM_UpdateIMU(const MPU6500_RawData *imu,
+void ODOM_UpdateIMU(const MPU6050_RawData *imu,
                      float heading_deg, float dt)
 {
     /* ── 1. Update heading from magnetometer ─────────────────── */

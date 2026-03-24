@@ -31,7 +31,7 @@ void      ODOM_Update(float left_dist, float right_dist, float dt);
 
 /* IMU-based update (no motors — manually pushed)
    heading_deg: absolute heading from STABLE (0–360 CW from North) */
-void      ODOM_UpdateIMU(const MPU6500_RawData *imu,
+void      ODOM_UpdateIMU(const MPU6050_RawData *imu,
                           float heading_deg, float dt);
 
 void      ODOM_SetPose(float x, float y, float theta_deg);

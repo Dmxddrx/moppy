@@ -1,5 +1,5 @@
 Core/Src/slam_lite.o: ../Core/Src/slam_lite.c ../Core/Inc/slam_lite.h \
- ../Core/Inc/odometry.h ../Core/Inc/mpu6500.h ../Core/Inc/main.h \
+ ../Core/Inc/odometry.h ../Core/Inc/mpu6050.h ../Core/Inc/main.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h \
  ../Core/Inc/stm32f4xx_hal_conf.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h \
@@ -34,7 +34,7 @@ Core/Src/slam_lite.o: ../Core/Src/slam_lite.c ../Core/Inc/slam_lite.h \
  ../Core/Inc/stable.h ../Core/Inc/hmc5883l.h
 ../Core/Inc/slam_lite.h:
 ../Core/Inc/odometry.h:
-../Core/Inc/mpu6500.h:
+../Core/Inc/mpu6050.h:
 ../Core/Inc/main.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:

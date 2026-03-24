@@ -14,7 +14,7 @@ typedef struct
 
 void STABLE_Init(void);
 
-void STABLE_Update(MPU6500_RawData *imu,
+void STABLE_Update(MPU6050_RawData *imu,
                    HMC5883L_RawData *mag,
                    float dt);
 

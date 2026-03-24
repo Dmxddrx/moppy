@@ -1,7 +1,7 @@
 #ifndef GENERAL_H
 #define GENERAL_H
 
-#include <mpu6050.h>
+#include "mpu6050.h"
 #include "main.h"
 #include "hmc5883l.h"
 #include "ultrasonic.h"
@@ -13,7 +13,6 @@
 #include "mapping.h"
 #include "ir.h"
 #include "stable.h"
-#include "ssd1306.h"
 #include "fonts.h"
 
 /* ── Feature switches ───────────────────────────────────────────*/

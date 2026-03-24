@@ -1,5 +1,5 @@
 Core/Src/odometry.o: ../Core/Src/odometry.c ../Core/Inc/odometry.h \
- ../Core/Inc/mpu6500.h ../Core/Inc/main.h \
+ ../Core/Inc/mpu6050.h ../Core/Inc/main.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h \
  ../Core/Inc/stm32f4xx_hal_conf.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h \
@@ -32,7 +32,7 @@ Core/Src/odometry.o: ../Core/Src/odometry.c ../Core/Inc/odometry.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h
 ../Core/Inc/odometry.h:
-../Core/Inc/mpu6500.h:
+../Core/Inc/mpu6050.h:
 ../Core/Inc/main.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:

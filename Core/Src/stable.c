@@ -13,7 +13,7 @@
 #define RAD_TO_DEG      (180.0f / 3.14159265f)
 #define DEG_TO_RAD      (3.14159265f / 180.0f)
 
-/* Scale factors (must match mpu6500.c settings)                  */
+/* Scale factors (must match MPU6050.c settings)                  */
 #define ACCEL_SCALE_MS2  (9.81f / 16384.0f)
 #define GYRO_SCALE_DPS   (1.0f  / 131.0f)
 
@@ -40,7 +40,7 @@ void STABLE_Init(void)
 /*  4. Tilt-compensate mag field using roll & pitch                  */
 /*  5. Complementary filter merges mag heading with gyro yaw         */
 /* ─────────────────────────────────────────────────────────────── */
-void STABLE_Update(MPU6500_RawData *imu, HMC5883L_RawData *mag, float dt)
+void STABLE_Update(MPU6050_RawData *imu, HMC5883L_RawData *mag, float dt)
 {
     /* ── Convert raw to physical ─────────────────────────────── */
     float ax = imu->ax * ACCEL_SCALE_MS2;
