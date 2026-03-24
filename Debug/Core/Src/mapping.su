@@ -1,7 +1,10 @@
-../Core/Src/mapping.c:6:12:world_to_map_x	16	static
-../Core/Src/mapping.c:11:12:world_to_map_y	16	static
-../Core/Src/mapping.c:16:6:Map_Init	24	static
-../Core/Src/mapping.c:27:6:Map_UpdateRobotPose	32	static
-../Core/Src/mapping.c:45:6:Map_UpdateUltrasonic	56	static
-../Core/Src/mapping.c:67:6:Map_UpdateIR	48	static
-../Core/Src/mapping.c:91:9:Map_GetCell	24	static
+../Core/Src/mapping.c:11:6:Map_Init	16	static
+../Core/Src/mapping.c:25:19:clamp_x	16	static
+../Core/Src/mapping.c:30:19:clamp_y	16	static
+../Core/Src/mapping.c:35:19:in_bounds	16	static
+../Core/Src/mapping.c:43:6:Map_UpdateRobotPose	32	static
+../Core/Src/mapping.c:68:6:Map_UpdateUltrasonic	104	static
+../Core/Src/mapping.c:119:9:Map_GetCell	24	static
+../Core/Src/mapping.c:130:6:Map_GetViewport	40	static
+../Core/Src/mapping.c:149:5:Map_RobotCellX	16	static
+../Core/Src/mapping.c:152:5:Map_RobotCellY	16	static

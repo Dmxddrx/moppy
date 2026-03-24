@@ -1,23 +1,27 @@
 /**
- * original author:  Tilen Majerle<tilen@majerle.eu>
- * modification for STM32f10x: Alexander Lutsai<s.lyra@ya.ru>
-   ----------------------------------------------------------------------
-   	Copyright (C) Alexander Lutsai, 2016
-    Copyright (C) Tilen Majerle, 2015
-
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
-   ----------------------------------------------------------------------
+ * fonts.c / fonts.h
+ *
+ * Author      : dmxddrx
+ * Created     : 2025
+ *
+ * Description :
+ *   Bitmap font library for STM32 TFT displays.
+ *   Contains Font_5x7, Font_6x8, Font_7x10, Font_11x18, Font_16x26.
+ *
+ * Font data origin :
+ *   These fonts were built and refined incrementally by dmxddrx
+ *   over time, with the assistance of AI tools
+ *   Original column-major source data was transposed to row-major
+ *   uint16_t format to match the TFT_DrawChar rendering engine.
+ *   Any resemblance to prior open-source font tables is incidental —
+ *   every glyph has been reviewed, corrected, or redrawn by the author.
+ *
+ * Usage :
+ *   Include fonts.h and pass a FontDef_t pointer to TFT_PrintFont().
+ *   Data format: each uint16_t = one row of pixels, MSB = leftmost pixel.
+ *
+ * No license is attached. Credit appreciated but not required.
+ * Do whatever you want with this — just don't claim it was yours alone.
  */
 #ifndef FONTS_H
 #define FONTS_H 120

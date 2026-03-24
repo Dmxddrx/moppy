@@ -1,7 +1,8 @@
-../Core/Src/encoder.c:34:6:ENCODER_Init	8	static
-../Core/Src/encoder.c:48:6:ENCODER_Update	16	static
-../Core/Src/encoder.c:86:9:ENCODER_GetCount	16	static
-../Core/Src/encoder.c:95:7:ENCODER_GetSpeed	16	static
-../Core/Src/encoder.c:104:7:ENCODER_GetSpeed_PID	16	static
-../Core/Src/encoder.c:113:12:ENCODER_GetStatus	16	static
-../Core/Src/encoder.c:122:6:ENCODER_Reset	16	static
+../Core/Src/encoder.c:26:6:ENCODER_Init	8	static
+../Core/Src/encoder.c:38:6:ENCODER_IC_Callback	32	static
+../Core/Src/encoder.c:69:6:ENCODER_Update	16	static
+../Core/Src/encoder.c:97:9:ENCODER_GetCount	16	static
+../Core/Src/encoder.c:103:7:ENCODER_GetSpeed	16	static
+../Core/Src/encoder.c:109:7:ENCODER_GetSpeed_PID	16	static
+../Core/Src/encoder.c:115:12:ENCODER_GetStatus	16	static
+../Core/Src/encoder.c:121:6:ENCODER_Reset	16	static

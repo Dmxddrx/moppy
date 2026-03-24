@@ -1,97 +1,154 @@
 #include "mapping.h"
+#include <string.h>
 #include <math.h>
+#include <stdlib.h>
 
-#define DEG_TO_RAD  0.0174533f
+#define DEG_TO_RAD  (3.14159265f / 180.0f)
 
-static int world_to_map_x(float x)
-{
-    return (int)(x / MAP_RESOLUTION) + MAP_SIZE_X / 2;
-}
-
-static int world_to_map_y(float y)
-{
-    return (int)(y / MAP_RESOLUTION) + MAP_SIZE_Y / 2;
-}
-
+/* ─────────────────────────────────────────────────────────────── */
+/*  Map_Init                                                        */
+/* ─────────────────────────────────────────────────────────────── */
 void Map_Init(Map *map)
 {
-    for(int i = 0; i < MAP_SIZE_X; i++)
-        for(int j = 0; j < MAP_SIZE_Y; j++)
-            map->grid[i][j] = CELL_UNKNOWN;
+    memset(map->grid, CELL_UNKNOWN, sizeof(map->grid));
 
-    map->robot_x     = 0.0f;
-    map->robot_y     = 0.0f;
+    /* Start robot at centre of the 100×100 grid                   */
+    map->robot_x     = (MAP_SIZE_X * 0.5f) * MAP_RESOLUTION;  /* 15.0 m */
+    map->robot_y     = (MAP_SIZE_Y * 0.5f) * MAP_RESOLUTION;  /* 15.0 m */
     map->robot_theta = 0.0f;
+    map->cells_cleaned = 0;
 }
 
-void Map_UpdateRobotPose(Map *map, float x, float y, float theta)
+/* ─────────────────────────────────────────────────────────────── */
+/*  Internal helpers                                                */
+/* ─────────────────────────────────────────────────────────────── */
+static inline int clamp_x(int v) {
+    if (v < 0)           return 0;
+    if (v >= MAP_SIZE_X) return MAP_SIZE_X - 1;
+    return v;
+}
+static inline int clamp_y(int v) {
+    if (v < 0)           return 0;
+    if (v >= MAP_SIZE_Y) return MAP_SIZE_Y - 1;
+    return v;
+}
+static inline int in_bounds(int x, int y) {
+    return (x >= 0 && x < MAP_SIZE_X && y >= 0 && y < MAP_SIZE_Y);
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/*  Map_UpdateRobotPose                                             */
+/*  Marks the robot's current cell as CELL_FREE (cleaned).         */
+/* ─────────────────────────────────────────────────────────────── */
+void Map_UpdateRobotPose(Map *map, float x, float y, float theta_deg)
 {
     map->robot_x     = x;
     map->robot_y     = y;
-    map->robot_theta = theta;
+    map->robot_theta = theta_deg;
 
-    /* Mark robot's current cell as free */
-    int cx = world_to_map_x(x);
-    int cy = world_to_map_y(y);
+    int cx = clamp_x((int)(x / MAP_RESOLUTION));
+    int cy = clamp_y((int)(y / MAP_RESOLUTION));
 
-    if(cx >= 0 && cx < MAP_SIZE_X && cy >= 0 && cy < MAP_SIZE_Y)
+    /* Only mark free if the cell wasn't already an obstacle */
+    if (map->grid[cx][cy] == CELL_UNKNOWN) {
         map->grid[cx][cy] = CELL_FREE;
+        map->cells_cleaned++;
+    } else if (map->grid[cx][cy] == CELL_FREE) {
+        /* already clean — no change, no double-count */
+    }
+    /* CELL_OCCUPIED stays occupied (obstacle wins)                */
 }
 
-/* ================================================================
-   Map_UpdateUltrasonic
-   sensor_angle_deg: mounting angle in degrees relative to robot front
-   ================================================================ */
-void Map_UpdateUltrasonic(Map *map, float distance, float sensor_angle_deg)
+/* ─────────────────────────────────────────────────────────────── */
+/*  Map_UpdateUltrasonic                                            */
+/*  sensor_angle_deg: mounting angle relative to robot forward     */
+/*  Marks the endpoint as CELL_OCCUPIED.                           */
+/*  Clears cells along the ray (Bresenham) as seen-free space.     */
+/* ─────────────────────────────────────────────────────────────── */
+void Map_UpdateUltrasonic(Map *map, float distance_m, float sensor_angle_deg)
 {
-    if(distance <= 0.0f) return;
+    if (distance_m <= 0.02f) return;               /* ignore noise          */
 
-    float global_angle = map->robot_theta + sensor_angle_deg * DEG_TO_RAD;
+    /* World-frame angle: compass heading convention
+       (0=North, 90=East, CW positive)
+       dx uses sin, dy uses cos in NED / compass frame                        */
+    float world_angle_rad = (map->robot_theta + sensor_angle_deg) * DEG_TO_RAD;
+    float sin_a = sinf(world_angle_rad);
+    float cos_a = cosf(world_angle_rad);
 
-    float hit_x = map->robot_x + distance * cosf(global_angle);
-    float hit_y = map->robot_y + distance * sinf(global_angle);
+    /* Robot grid position */
+    int rx = (int)(map->robot_x / MAP_RESOLUTION);
+    int ry = (int)(map->robot_y / MAP_RESOLUTION);
 
-    int cell_x = world_to_map_x(hit_x);
-    int cell_y = world_to_map_y(hit_y);
+    if (distance_m < US_MAP_MAX_M) {
+        /* ── Mark obstacle endpoint ─────────────────────────── */
+        float obs_x = map->robot_x + distance_m * sin_a;
+        float obs_y = map->robot_y + distance_m * cos_a;
+        int   ox    = (int)(obs_x / MAP_RESOLUTION);
+        int   oy    = (int)(obs_y / MAP_RESOLUTION);
 
-    if(cell_x >= 0 && cell_x < MAP_SIZE_X &&
-       cell_y >= 0 && cell_y < MAP_SIZE_Y)
-        map->grid[cell_x][cell_y] = CELL_OCCUPIED;
+        if (in_bounds(ox, oy)) {
+            map->grid[ox][oy] = CELL_OCCUPIED;
+        }
+
+        /* ── Bresenham ray: mark intermediate cells as seen ─── */
+        int x0 = rx, y0 = ry;
+        int x1 = clamp_x(ox), y1 = clamp_y(oy);
+        int dx =  abs(x1 - x0), sx = (x0 < x1) ? 1 : -1;
+        int dy = -abs(y1 - y0), sy = (y0 < y1) ? 1 : -1;
+        int err = dx + dy;
+
+        while (x0 != x1 || y0 != y1) {
+            if (!in_bounds(x0, y0)) break;
+            /* Don't override cleaned cells or already-known obstacles */
+            if (map->grid[x0][y0] == CELL_UNKNOWN) {
+                /* "seen free" but not cleaned — keep as UNKNOWN for now
+                    so the floor robot still needs to physically visit it */
+            }
+            int e2 = 2 * err;
+            if (e2 >= dy) { err += dy; x0 += sx; }
+            if (e2 <= dx) { err += dx; y0 += sy; }
+        }
+    }
+    /* If distance >= US_MAP_MAX_M: nothing to mark (open space)   */
 }
 
-/* ================================================================
-   Map_UpdateIR
-   IR gives no distance — marks CELL_OCCUPIED at IR_RANGE_M
-   in the sensor's mounting direction when triggered.
-   ================================================================ */
-void Map_UpdateIR(Map *map, uint8_t sensor_index, uint8_t triggered)
+/* ─────────────────────────────────────────────────────────────── */
+/*  Map_GetCell                                                     */
+/* ─────────────────────────────────────────────────────────────── */
+uint8_t Map_GetCell(const Map *map, int x, int y)
 {
-    if(!triggered) return;
-
-    static const float ir_angles_deg[4] = {
-        IR_ANGLE_0, IR_ANGLE_1, IR_ANGLE_2, IR_ANGLE_3
-    };
-
-    if(sensor_index > 3) return;
-
-    float global_angle = map->robot_theta
-                       + ir_angles_deg[sensor_index] * DEG_TO_RAD;
-
-    float hit_x = map->robot_x + IR_RANGE_M * cosf(global_angle);
-    float hit_y = map->robot_y + IR_RANGE_M * sinf(global_angle);
-
-    int cell_x = world_to_map_x(hit_x);
-    int cell_y = world_to_map_y(hit_y);
-
-    if(cell_x >= 0 && cell_x < MAP_SIZE_X &&
-       cell_y >= 0 && cell_y < MAP_SIZE_Y)
-        map->grid[cell_x][cell_y] = CELL_OCCUPIED;
+    if (!in_bounds(x, y)) return CELL_UNKNOWN;
+    return (uint8_t)map->grid[x][y];
 }
 
-uint8_t Map_GetCell(Map *map, int x, int y)
+/* ─────────────────────────────────────────────────────────────── */
+/*  Map_GetViewport                                                 */
+/*  Calculates top-left (vx0, vy0) of the 8×4 OLED viewport,      */
+/*  centred on the robot and clamped to grid bounds.               */
+/* ─────────────────────────────────────────────────────────────── */
+void Map_GetViewport(const Map *map, int *vx0, int *vy0)
 {
-    if(x < 0 || x >= MAP_SIZE_X || y < 0 || y >= MAP_SIZE_Y)
-        return CELL_OCCUPIED;
+    int rcx = Map_RobotCellX(map);
+    int rcy = Map_RobotCellY(map);
 
-    return map->grid[x][y];
+    int vx = rcx - VIEW_COLS / 2;
+    int vy = rcy - VIEW_ROWS / 2;
+
+    /* Clamp so viewport never goes outside the grid */
+    if (vx < 0)                       vx = 0;
+    if (vy < 0)                       vy = 0;
+    if (vx > MAP_SIZE_X - VIEW_COLS)  vx = MAP_SIZE_X - VIEW_COLS;
+    if (vy > MAP_SIZE_Y - VIEW_ROWS)  vy = MAP_SIZE_Y - VIEW_ROWS;
+
+    *vx0 = vx;
+    *vy0 = vy;
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+int Map_RobotCellX(const Map *map) {
+    return clamp_x((int)(map->robot_x / MAP_RESOLUTION));
+}
+int Map_RobotCellY(const Map *map) {
+    return clamp_y((int)(map->robot_y / MAP_RESOLUTION));
 }
