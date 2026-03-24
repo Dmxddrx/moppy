@@ -1,3 +1,6 @@
-../Core/Src/ultrasonic.c:53:6:ULTRASONIC_Init	16	static
-../Core/Src/ultrasonic.c:71:6:ULTRASONIC_Trigger	32	static
-../Core/Src/ultrasonic.c:112:6:ULTRASONIC_CaptureCallback	64	static
+../Core/Src/ultrasonic.c:22:6:ULTRASONIC_Init	16	static
+../Core/Src/ultrasonic.c:44:6:ULTRASONIC_Trigger	32	static,ignoring_inline_asm
+../Core/Src/ultrasonic.c:66:6:ULTRASONIC_CaptureCallback	32	static
+../Core/Src/ultrasonic.c:111:6:ULTRASONIC_CheckTimeout	16	static
+../Core/Src/ultrasonic.c:124:7:ULTRASONIC_GetDistance	16	static
+../Core/Src/ultrasonic.c:136:6:HAL_TIM_IC_CaptureCallback	24	static

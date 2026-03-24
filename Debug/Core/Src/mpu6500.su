@@ -1,3 +1,7 @@
-../Core/Src/mpu6500.c:19:12:MPU6500_Check	40	static
-../Core/Src/mpu6500.c:34:6:MPU6500_Init	32	static
-../Core/Src/mpu6500.c:63:19:MPU6500_ReadRaw	48	static
+../Core/Src/mpu6500.c:24:26:WriteReg	32	static
+../Core/Src/mpu6500.c:28:26:ReadRegs	32	static
+../Core/Src/mpu6500.c:34:12:MPU6500_Check	40	static
+../Core/Src/mpu6500.c:47:6:MPU6500_Init	8	static
+../Core/Src/mpu6500.c:69:6:MPU6500_CalibrateGyro	40	static
+../Core/Src/mpu6500.c:89:19:MPU6500_ReadRaw	32	static
+../Core/Src/mpu6500.c:107:18:MPU6500_GetPhysical	48	static
