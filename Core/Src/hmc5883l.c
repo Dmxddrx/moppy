@@ -1,95 +1,88 @@
 #include "hmc5883l.h"
+#include <math.h>
 
-#define CONFIG_A       0x00
-#define CONFIG_B       0x01
-#define MODE_REG       0x02
-#define DATA_X_MSB     0x03
+/* I2C1: PB6 (SCL1), PB7 (SDA1) — shared with MPU6500            */
+extern I2C_HandleTypeDef hi2c1;
 
-static I2C_HandleTypeDef *hmc_i2c;
+/* ── Register map ───────────────────────────────────────────────*/
+#define REG_CONFIG_A  0x00
+#define REG_CONFIG_B  0x01
+#define REG_MODE      0x02
+#define REG_DATA_XH   0x03   /* X_H, X_L, Z_H, Z_L, Y_H, Y_L    */
+#define REG_STATUS    0x09
+#define REG_ID_A      0x0A   /* Should read 'H', '4', '3'         */
 
-/* ================================================================
-   HMC5883L_Check
-   Call this first — sets the I2C handle and verifies the chip.
-   Reads identity registers 0x0A/0x0B/0x0C in one transaction.
-   HMC5883L always returns 'H'(0x48), '4'(0x34), '3'(0x33).
-   ================================================================ */
+/* ─────────────────────────────────────────────────────────────── */
+static HAL_StatusTypeDef WriteReg(uint8_t reg, uint8_t val)
+{
+    return HAL_I2C_Mem_Write(&hi2c1, HMC5883L_ADDR, reg, 1, &val, 1, 10);
+}
+
+/* ─────────────────────────────────────────────────────────────── */
 HMC_Status HMC5883L_Check(I2C_HandleTypeDef *hi2c)
 {
-    hmc_i2c = hi2c;
-
     uint8_t id[3] = {0};
-
-    if(HAL_I2C_Mem_Read(hmc_i2c, HMC5883L_ADDR,
-                        0x0A, 1, id, 3, 100) != HAL_OK)
+    if (HAL_I2C_Mem_Read(hi2c, HMC5883L_ADDR,
+                          REG_ID_A, 1, id, 3, 100) != HAL_OK)
         return HMC_NO_I2C;
-
-    if(id[0] != 0x48 || id[1] != 0x34 || id[2] != 0x33)
+    if (id[0] != 'H' || id[1] != '4' || id[2] != '3')
         return HMC_WRONG_ID;
-
     return HMC_OK;
 }
 
+/* ─────────────────────────────────────────────────────────────── */
 void HMC5883L_Init(void)
 {
-    uint8_t data;
-
-    /* 8 samples avg, 15Hz */
-    data = 0x70;
-    HAL_I2C_Mem_Write(hmc_i2c, HMC5883L_ADDR, CONFIG_A, 1, &data, 1, 100);
-
-    /* Gain */
-    data = 0x20;
-    HAL_I2C_Mem_Write(hmc_i2c, HMC5883L_ADDR, CONFIG_B, 1, &data, 1, 100);
-
-    /* Continuous measurement mode */
-    data = 0x00;
-    HAL_I2C_Mem_Write(hmc_i2c, HMC5883L_ADDR, MODE_REG, 1, &data, 1, 100);
+    HAL_Delay(10);
+    /* CRA: 8 samples avg, 15 Hz output, normal measurement       */
+    WriteReg(REG_CONFIG_A, 0x70);
+    /* CRB: gain = 1090 LSB/Gauss (default ±1.3 Ga range)         */
+    WriteReg(REG_CONFIG_B, 0x20);
+    /* Mode: continuous measurement                                */
+    WriteReg(REG_MODE, 0x00);
+    HAL_Delay(67);   /* wait one measurement cycle (15 Hz → ~67 ms) */
 }
 
-HMC5883L_SelfTestData HMC5883L_SelfTest(void)
-{
-    HMC5883L_SelfTestData result = {0, 0, 0};
-    uint8_t buf[6] = {0};
-    uint8_t data;
-
-    /* Positive bias */
-    data = 0x71;
-    HAL_I2C_Mem_Write(hmc_i2c, HMC5883L_ADDR, CONFIG_A, 1, &data, 1, 100);
-    data = 0xA0;
-    HAL_I2C_Mem_Write(hmc_i2c, HMC5883L_ADDR, CONFIG_B, 1, &data, 1, 100);
-
-    /* Single measurement mode — bias coil active for this one read */
-    data = 0x01;
-    HAL_I2C_Mem_Write(hmc_i2c, HMC5883L_ADDR, MODE_REG, 1, &data, 1, 100);
-
-    HAL_Delay(10);   /* ~6ms needed for single measurement */
-
-    HAL_I2C_Mem_Read(hmc_i2c, HMC5883L_ADDR,
-                     DATA_X_MSB, 1, buf, 6, 100);
-
-    result.mx = (int16_t)((buf[0] << 8) | buf[1]);
-    result.mz = (int16_t)((buf[2] << 8) | buf[3]);
-    result.my = (int16_t)((buf[4] << 8) | buf[5]);
-
-    /* Restore normal config */
-    HMC5883L_Init();
-
-    return result;
-}
-
+/* ─────────────────────────────────────────────────────────────── */
 void HMC5883L_ReadRaw(HMC5883L_RawData *data)
 {
     uint8_t buf[6] = {0};
-
-    if(HAL_I2C_Mem_Read(hmc_i2c, HMC5883L_ADDR,
-                        DATA_X_MSB, 1, buf, 6, 100) != HAL_OK)
-    {
-        data->mx = 0; data->my = 0; data->mz = 0;
-        return;
-    }
-
-    /* HMC register order is X, Z, Y — not X, Y, Z */
+    /* NOTE: HMC5883L data register order is X, Z, Y — not X, Y, Z */
+    HAL_I2C_Mem_Read(&hi2c1, HMC5883L_ADDR,
+                     REG_DATA_XH, 1, buf, 6, 10);
     data->mx = (int16_t)((buf[0] << 8) | buf[1]);
     data->mz = (int16_t)((buf[2] << 8) | buf[3]);
     data->my = (int16_t)((buf[4] << 8) | buf[5]);
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+/*  HMC5883L_GetHeading                                             */
+/*  Accepts tilt-compensated mx2, my2 (calculated in stable.c).    */
+/*  Returns 0–360 degrees, CW from magnetic North.                  */
+/* ─────────────────────────────────────────────────────────────── */
+float HMC5883L_GetHeading(float mx, float my)
+{
+    float heading = atan2f(-my, mx) * (180.0f / 3.14159265f);
+    if (heading < 0.0f)    heading += 360.0f;
+    if (heading >= 360.0f) heading -= 360.0f;
+    return heading;
+}
+
+/* ─────────────────────────────────────────────────────────────── */
+HMC5883L_SelfTestData HMC5883L_SelfTest(void)
+{
+    HMC5883L_SelfTestData result = {0};
+    /* Enable positive bias self-test on X axis                    */
+    WriteReg(REG_CONFIG_A, 0x71);  /* 8 samples, 15 Hz, positive bias */
+    HAL_Delay(67);
+
+    HMC5883L_RawData raw;
+    HMC5883L_ReadRaw(&raw);
+    result.mx = raw.mx;
+    result.my = raw.my;
+    result.mz = raw.mz;
+
+    /* Restore normal operation                                    */
+    HMC5883L_Init();
+    return result;
 }
