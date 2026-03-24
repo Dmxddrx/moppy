@@ -1,6 +1,8 @@
-../Core/Src/general.c:46:6:GENERAL_Init	8	static
-../Core/Src/general.c:147:13:GENERAL_OLED_Page_Sensors	40	static
-../Core/Src/general.c:183:13:GENERAL_OLED_Page_Ultrasonic	112	static
-../Core/Src/general.c:256:13:GENERAL_OLED_Page_Encoders	80	static
-../Core/Src/general.c:307:6:GENERAL_OLED_Debug	8	static
-../Core/Src/general.c:332:6:GENERAL_Update	48	static
+../Core/Src/general.c:41:13:render_map_page	56	static
+../Core/Src/general.c:110:13:render_ultrasonic_page	64	static
+../Core/Src/general.c:173:13:render_imu_page	72	static
+../Core/Src/general.c:210:13:render_position_page	48	static
+../Core/Src/general.c:242:6:GENERAL_Init	8	static
+../Core/Src/general.c:288:6:GENERAL_Update	24	static
+../Core/Src/general.c:351:6:GENERAL_ResetPose	8	static
+../Core/Src/general.c:360:6:GENERAL_OLED_Debug	8	static

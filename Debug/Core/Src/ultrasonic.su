@@ -3,4 +3,3 @@
 ../Core/Src/ultrasonic.c:66:6:ULTRASONIC_CaptureCallback	32	static
 ../Core/Src/ultrasonic.c:111:6:ULTRASONIC_CheckTimeout	16	static
 ../Core/Src/ultrasonic.c:124:7:ULTRASONIC_GetDistance	16	static
-../Core/Src/ultrasonic.c:136:6:HAL_TIM_IC_CaptureCallback	24	static

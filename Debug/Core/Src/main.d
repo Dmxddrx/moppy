@@ -33,8 +33,11 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Core/Inc/general.h ../Core/Inc/main.h ../Core/Inc/mpu6500.h \
  ../Core/Inc/hmc5883l.h ../Core/Inc/ultrasonic.h ../Core/Inc/encoder.h \
  ../Core/Inc/motor.h ../Core/Inc/motor_pwm.h ../Core/Inc/btns.h \
- ../Core/Inc/oled.h ../Core/Inc/odometry.h ../Core/Inc/slam_lite.h \
- ../Core/Inc/stable.h ../Core/Inc/mapping.h ../Core/Inc/ir.h
+ ../Core/Inc/oled.h ../Core/Inc/odometry.h ../Core/Inc/mapping.h \
+ ../Core/Inc/ir.h ../Core/Inc/stable.h \
+ C:/Users/DMXHP/Documents/Programing_Files_IoT/STM32CubeIDE/workspace_2.0.0/STM32F407VET6/Moppy/Drivers/Middlewares/SSD1306/ssd1306.h \
+ C:/Users/DMXHP/Documents/Programing_Files_IoT/STM32CubeIDE/workspace_2.0.0/STM32F407VET6/Moppy/Drivers/Middlewares/SSD1306/fonts.h \
+ C:/Users/DMXHP/Documents/Programing_Files_IoT/STM32CubeIDE/workspace_2.0.0/STM32F407VET6/Moppy/Drivers/Middlewares/SSD1306/fonts.h
 ../Core/Inc/main.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
@@ -78,7 +81,9 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../Core/Inc/btns.h:
 ../Core/Inc/oled.h:
 ../Core/Inc/odometry.h:
-../Core/Inc/slam_lite.h:
-../Core/Inc/stable.h:
 ../Core/Inc/mapping.h:
 ../Core/Inc/ir.h:
+../Core/Inc/stable.h:
+C:/Users/DMXHP/Documents/Programing_Files_IoT/STM32CubeIDE/workspace_2.0.0/STM32F407VET6/Moppy/Drivers/Middlewares/SSD1306/ssd1306.h:
+C:/Users/DMXHP/Documents/Programing_Files_IoT/STM32CubeIDE/workspace_2.0.0/STM32F407VET6/Moppy/Drivers/Middlewares/SSD1306/fonts.h:
+C:/Users/DMXHP/Documents/Programing_Files_IoT/STM32CubeIDE/workspace_2.0.0/STM32F407VET6/Moppy/Drivers/Middlewares/SSD1306/fonts.h:

@@ -1,3 +1,7 @@
-../Core/Src/odometry.c:8:6:ODOM_Init	4	static
-../Core/Src/odometry.c:15:6:ODOM_Update	40	static
-../Core/Src/odometry.c:29:11:ODOM_GetPose	40	static
+../Core/Src/odometry.c:30:6:ODOM_Init	4	static
+../Core/Src/odometry.c:42:6:ODOM_Update	48	static
+../Core/Src/odometry.c:65:6:ODOM_UpdateIMU	56	static
+../Core/Src/odometry.c:109:6:ODOM_SetPose	24	static
+../Core/Src/odometry.c:116:6:ODOM_ResetVelocity	4	static
+../Core/Src/odometry.c:121:11:ODOM_GetPose	40	static
+../Core/Src/odometry.c:122:11:ODOM_GetSpeed	4	static

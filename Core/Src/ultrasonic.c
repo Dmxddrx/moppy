@@ -133,7 +133,7 @@ float ULTRASONIC_GetDistance(uint8_t index)
 /*  HAL weak-callback override                                      */
 /*  Place this here OR in stm32f4xx_it.c — not both.               */
 /* ─────────────────────────────────────────────────────────────── */
-void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
+/*void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
     if (htim->Instance != TIM2) return;
 
@@ -146,4 +146,4 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
         default: return;
     }
     ULTRASONIC_CaptureCallback(ch);
-}
+}*/

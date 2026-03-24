@@ -1,0 +1,71 @@
+===============================================================
+  CUBEMX CONFIGURATION NOTES — Floor Robot Mapping System
+===============================================================
+
+─── TIM2  (Ultrasonic Echo Input Capture) ─────────────────────
+  Mode          : Input Capture (no Encoder)
+  Clock Source  : Internal Clock
+  Prescaler     : 167          (168 MHz / 168 = 1 MHz → 1 count = 1 µs)
+  Counter Period: 0xFFFFFFFF   (32-bit, overflow very rare)
+
+  Channel 1 (PA0 / SR04_ECHO1): Input Capture Direct Mode
+    IC Polarity  : Rising and Falling Edge (BOTHEDGE)
+    IC Selection : Direct
+  Channel 2 (PA1 / SR04_ECHO2): same settings
+  Channel 3 (PA2 / SR04_ECHO3): same settings
+  Channel 4 (PA3 / SR04_ECHO4): same settings
+
+  NVIC: TIM2 global interrupt → ENABLED, Priority 2
+  ── Do NOT use TIM2 for any other purpose ──────────────────
+
+─── TIM6  (1 ms system tick for encoder) ──────────────────────
+  Already configured (TIM6_DAC_IRQHandler in stm32f4xx_it.h)
+  Used by ENCODER_Update() — keep as-is
+
+─── I2C1  (MPU6500 + HMC5883L) ────────────────────────────────
+  Pins: SCL=PB6, SDA=PB7
+  Speed: Fast Mode 400 kHz
+  Addresses on bus:
+    MPU6500  → 0xD0 (0x68 << 1, AD0=LOW)
+    HMC5883L → 0x3C (0x1E << 1)
+
+─── I2C2  (SSD1306 OLED) ───────────────────────────────────────
+  Pins: SCL=PB10, SDA=PB11
+  Speed: Fast Mode 400 kHz
+  SSD1306 address: 0x78 (as defined in ssd1306.h)
+
+─── TRIG GPIO pins (all Output Push-Pull, No Pull, High Speed) ─
+  TRIG1: PA8   (SR04 sensor 0 — Front)
+  TRIG2: PB1   (SR04 sensor 1 — Right)
+  TRIG3: PE8   (SR04 sensor 2 — Rear)
+  TRIG4: PD7   (SR04 sensor 3 — Left)
+
+─── Distance formula reminder ──────────────────────────────────
+  At 30°C:  V = 331.3 + 0.606 × 30 = 349.48 m/s
+  dist (m) = (pulse_µs × 349.48) / 2 000 000
+  Max measurable: ~23 500 µs → 4.10 m  (US_MAX_DISTANCE_M = 4.0)
+
+─── Map layout ─────────────────────────────────────────────────
+  Grid     : 100 × 100 cells
+  Cell size: 30 cm × 30 cm
+  Total    : 30 m × 30 m
+  Robot start: cell (50, 50) = position (15.0 m, 15.0 m)
+  Memory   : 100 × 100 × 1 byte = 10 KB (fits in STM32F4 RAM)
+
+─── OLED page layout ───────────────────────────────────────────
+  Button  : BTN_OLED_PAGE (PC2) — cycles pages on each press
+  Page 0  : MAP        — 8×4 grid of 16×16 px blocks
+  Page 1  : ULTRASONIC — 4 sensor distances
+  Page 2  : IMU        — gyro rates, roll/pitch/yaw
+  Page 3  : POSITION   — x, y, heading, speed, cells cleaned
+
+─── Block visual key ───────────────────────────────────────────
+  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+  │              │  │   (white)    │  │   (white)    │
+  │  (outline)   │  │              │  │  ┌────────┐  │
+  │   UNKNOWN    │  │    CLEAN     │  │  │ black  │  │
+  │              │  │              │  │  │OBSTACLE│  │
+  └──────────────┘  └──────────────┘  └──────────────┘
+  Robot position → 4×4 black square at cell centre (on white)
+                   4×4 white square at cell centre (on black)
+===============================================================

@@ -1,6 +1,6 @@
 Core/Src/slam_lite.o: ../Core/Src/slam_lite.c ../Core/Inc/slam_lite.h \
- ../Core/Inc/odometry.h ../Core/Inc/stable.h ../Core/Inc/mpu6500.h \
- ../Core/Inc/main.h ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h \
+ ../Core/Inc/odometry.h ../Core/Inc/mpu6500.h ../Core/Inc/main.h \
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h \
  ../Core/Inc/stm32f4xx_hal_conf.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_def.h \
@@ -31,10 +31,9 @@ Core/Src/slam_lite.o: ../Core/Src/slam_lite.c ../Core/Inc/slam_lite.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
- ../Core/Inc/hmc5883l.h
+ ../Core/Inc/stable.h ../Core/Inc/hmc5883l.h
 ../Core/Inc/slam_lite.h:
 ../Core/Inc/odometry.h:
-../Core/Inc/stable.h:
 ../Core/Inc/mpu6500.h:
 ../Core/Inc/main.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
@@ -68,4 +67,5 @@ Core/Src/slam_lite.o: ../Core/Src/slam_lite.c ../Core/Inc/slam_lite.h \
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h:
+../Core/Inc/stable.h:
 ../Core/Inc/hmc5883l.h:
