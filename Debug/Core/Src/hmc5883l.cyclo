@@ -1,4 +1,6 @@
-../Core/Src/hmc5883l.c:16:12:HMC5883L_Check	5
-../Core/Src/hmc5883l.c:32:6:HMC5883L_Init	1
-../Core/Src/hmc5883l.c:49:23:HMC5883L_SelfTest	1
-../Core/Src/hmc5883l.c:80:6:HMC5883L_ReadRaw	2
+../Core/Src/hmc5883l.c:16:26:WriteReg	1
+../Core/Src/hmc5883l.c:22:12:HMC5883L_Check	5
+../Core/Src/hmc5883l.c:34:6:HMC5883L_Init	1
+../Core/Src/hmc5883l.c:47:6:HMC5883L_ReadRaw	1
+../Core/Src/hmc5883l.c:63:7:HMC5883L_GetHeading	3
+../Core/Src/hmc5883l.c:72:23:HMC5883L_SelfTest	1

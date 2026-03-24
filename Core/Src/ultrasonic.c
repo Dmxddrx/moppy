@@ -136,7 +136,6 @@ float ULTRASONIC_GetDistance(uint8_t index)
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
     if (htim->Instance != TIM2) return;
-    {
 
     uint32_t ch;
     switch (htim->Channel) {
@@ -147,5 +146,4 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
         default: return;
     }
     ULTRASONIC_CaptureCallback(ch);
-    }
 }
