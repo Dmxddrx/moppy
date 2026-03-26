@@ -5,3 +5,4 @@
 ../Core/Src/odometry.c:116:6:ODOM_ResetVelocity	1
 ../Core/Src/odometry.c:121:11:ODOM_GetPose	1
 ../Core/Src/odometry.c:122:11:ODOM_GetSpeed	1
+../Core/Src/odometry.c:131:6:ODOM_UpdateEncoders	5

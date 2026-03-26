@@ -200,18 +200,18 @@ static void render_position_page(void)
     OLED_Print(0, 0, "-- Position --");
 
     snprintf(buf, sizeof(buf), "X: %7.3f m", (double)s_pose.x);
-    OLED_Print(0, 14, buf);
+    OLED_Print(0, 12, buf);
 
     snprintf(buf, sizeof(buf), "Y: %7.3f m", (double)s_pose.y);
-    OLED_Print(0, 28, buf);
+    OLED_Print(0, 22, buf);
 
     snprintf(buf, sizeof(buf), "H: %6.1f deg", (double)s_pose.theta);
-    OLED_Print(0, 42, buf);
+    OLED_Print(0, 32, buf);
 
     snprintf(buf, sizeof(buf), "Spd:%4.2fm/s Cl:%lu",
              (double)ODOM_GetSpeed(),
              (unsigned long)g_map.cells_cleaned);
-    OLED_Print(0, 54, buf);
+    OLED_Print(0, 44, buf);
 
     OLED_Update();
 }
@@ -275,25 +275,62 @@ void GENERAL_Update(void)
     }
 
     /* ── IMU + Orientation (10 ms period = 100 Hz) ───────────── */
-    if ((now - s_last_imu_ms) >= IMU_UPDATE_INTERVAL_MS) {
-        float dt = (float)(now - s_last_imu_ms) * 0.001f;
-        s_last_imu_ms = now;
+    /* ── Autonomous Loop (10 ms period = 100 Hz) ───────────── */
+	if ((now - s_last_imu_ms) >= IMU_UPDATE_INTERVAL_MS) {
+		float dt = (float)(now - s_last_imu_ms) * 0.001f;
+		s_last_imu_ms = now;
 
-        /* CORRECTED: Changed MPU6500_ReadRaw to MPU6050_ReadRaw */
-        if (s_mpu_ok) MPU6050_ReadRaw(&s_imu_raw);
-        if (s_hmc_ok) HMC5883L_ReadRaw(&s_mag_raw);
+		/* 1. Read IMU & Fused Yaw */
+		if (s_mpu_ok) MPU6050_ReadRaw(&s_imu_raw);
+		if (s_hmc_ok) HMC5883L_ReadRaw(&s_mag_raw);
+		STABLE_Update(&s_imu_raw, &s_mag_raw, dt);
+		s_orient = STABLE_GetOrientation();
 
-        STABLE_Update(&s_imu_raw, &s_mag_raw, dt);
-        s_orient = STABLE_GetOrientation();
+		/* 2. Read Encoders (rad/s) and convert to m/s
+			  Radius = 0.065m / 2 = 0.0325m */
+		float v_left  = ENCODER_GetSpeed(0) * 0.0325f;
+		float v_right = ENCODER_GetSpeed(1) * 0.0325f;
 
-        /* Update position from IMU (motors off — manual push)    */
-        ODOM_UpdateIMU(&s_imu_raw, s_orient.yaw, dt);
-        s_pose = ODOM_GetPose();
+		/* Apply sign based on motor direction so reversing works */
+		if (MOTOR_GetDirection(0) < 0) v_left  = -v_left;
+		if (MOTOR_GetDirection(3) < 0) v_right = -v_right;
 
-        /* Mark current cell as cleaned                           */
-        Map_UpdateRobotPose(&g_map,
-                             s_pose.x, s_pose.y, s_pose.theta);
-    }
+		/* 3. Update Map Position */
+		ODOM_UpdateEncoders(v_left, v_right, s_orient.yaw, dt);
+		s_pose = ODOM_GetPose();
+		Map_UpdateRobotPose(&g_map, s_pose.x, s_pose.y, s_pose.theta);
+
+		/* 4. Obstacle Detection for Coverage Planner
+			  Trigger a turn if ANY front/side sensor sees a wall under 25cm */
+		int obstacle = 0;
+		for(int i=0; i<4; i++) {
+			float dist = ULTRASONIC_GetDistance(i);
+			if(dist > 0.05f && dist < 0.25f) {
+				obstacle = 1;
+				break;
+			}
+		}
+
+		/* 5. Coverage Brain: Get Target Heading & Speed */
+		float target_heading = 0.0f;
+		int target_speed = 0;
+		COVERAGE_Update(s_pose, s_orient.yaw, obstacle, &target_heading, &target_speed);
+
+		/* 6. Motion Steering: Calculate left/right PWM to hold heading */
+		int left_pwm, right_pwm;
+		MOTION_DriveStraight(target_heading, s_orient.yaw, target_speed, dt, &left_pwm, &right_pwm);
+
+		/* 7. Drive Physical Motors
+			  Convert signed PWM into absolute speed and forward/backward direction */
+		uint8_t left_dir  = (left_pwm >= 0)  ? MOTOR_FORWARD : MOTOR_BACKWARD;
+		uint8_t right_dir = (right_pwm >= 0) ? MOTOR_FORWARD : MOTOR_BACKWARD;
+
+		/* Apply to hardware (Assuming M1/M2 are Left, M4/M5 are Right) */
+		MOTOR_Set(0, left_dir,  abs(left_pwm));  // M1
+		MOTOR_Set(1, left_dir,  abs(left_pwm));  // M2
+		MOTOR_Set(3, right_dir, abs(right_pwm)); // M4
+		MOTOR_Set(4, right_dir, abs(right_pwm)); // M5
+	}
 
     /* ── Ultrasonic round-robin (25 ms per sensor) ───────────── */
     if ((now - s_last_us_ms) >= US_TRIGGER_INTERVAL_MS) {

@@ -120,3 +120,33 @@ void ODOM_ResetVelocity(void)
 
 RobotPose ODOM_GetPose(void)  { return s_pose;  }
 float     ODOM_GetSpeed(void) { return s_speed; }
+
+/* ================================================================
+   ODOM_UpdateEncoders
+   Uses wheel speeds for distance and IMU for absolute heading.
+   v_left, v_right : wheel speeds in meters/second
+   yaw_deg         : absolute compass heading from IMU
+   dt              : time delta in seconds
+   ================================================================ */
+void ODOM_UpdateEncoders(float v_left, float v_right, float yaw_deg, float dt)
+{
+    /* 1. Calculate center speed (average of both sides) */
+    s_speed = (v_left + v_right) / 2.0f;
+
+    /* 2. Calculate distance traveled in this tick */
+    float distance = s_speed * dt;
+
+    /* 3. Convert degrees to radians for math */
+    float yaw_rad = yaw_deg * DEG_TO_RAD;
+
+    /* 4. Update Position (World Frame: X=East, Y=North) */
+    s_pose.x += distance * sinf(yaw_rad);
+    s_pose.y += distance * cosf(yaw_rad);
+    s_pose.theta = yaw_deg;
+
+    /* 5. Clamp to map boundaries (30x30 meters) */
+    if (s_pose.x < 0.0f)  s_pose.x = 0.0f;
+    if (s_pose.x > 30.0f) s_pose.x = 30.0f;
+    if (s_pose.y < 0.0f)  s_pose.y = 0.0f;
+    if (s_pose.y > 30.0f) s_pose.y = 30.0f;
+}

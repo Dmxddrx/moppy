@@ -1,8 +1,0 @@
-../Core/Src/general.c:42:13:render_map_page	48	static
-../Core/Src/general.c:110:13:render_ultrasonic_page	80	static
-../Core/Src/general.c:146:13:render_imu_page	40	static
-../Core/Src/general.c:195:13:render_position_page	48	static
-../Core/Src/general.c:222:6:GENERAL_Init	8	static
-../Core/Src/general.c:267:6:GENERAL_Update	24	static
-../Core/Src/general.c:331:6:GENERAL_ResetPose	8	static
-../Core/Src/general.c:340:6:GENERAL_OLED_Debug	8	static

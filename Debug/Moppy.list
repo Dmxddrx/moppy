@@ -29,25 +29,25 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   ALLOC
  12 .ARM.attributes 00000030  00000000  00000000  000101e0  2**0
                   CONTENTS, READONLY
- 13 .debug_info   00018296  00000000  00000000  00010210  2**0
+ 13 .debug_info   000182fe  00000000  00000000  00010210  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 14 .debug_abbrev 00003b7b  00000000  00000000  000284a6  2**0
+ 14 .debug_abbrev 00003b7b  00000000  00000000  0002850e  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 15 .debug_aranges 00001618  00000000  00000000  0002c028  2**3
+ 15 .debug_aranges 00001620  00000000  00000000  0002c090  2**3
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 16 .debug_rnglists 00001154  00000000  00000000  0002d640  2**0
+ 16 .debug_rnglists 0000115b  00000000  00000000  0002d6b0  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 17 .debug_macro  000244b1  00000000  00000000  0002e794  2**0
+ 17 .debug_macro  000244b1  00000000  00000000  0002e80b  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 18 .debug_line   0001cb3c  00000000  00000000  00052c45  2**0
+ 18 .debug_line   0001cbc1  00000000  00000000  00052cbc  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 19 .debug_str    000d39ad  00000000  00000000  0006f781  2**0
+ 19 .debug_str    000d39e9  00000000  00000000  0006f87d  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 20 .comment      00000043  00000000  00000000  0014312e  2**0
+ 20 .comment      00000043  00000000  00000000  00143266  2**0
                   CONTENTS, READONLY
- 21 .debug_frame  00006c6c  00000000  00000000  00143174  2**2
+ 21 .debug_frame  00006ca0  00000000  00000000  001432ac  2**2
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 22 .debug_line_str 0000008d  00000000  00000000  00149de0  2**0
+ 22 .debug_line_str 0000008d  00000000  00000000  00149f4c  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
 
 Disassembly of section .text:
@@ -2027,10 +2027,10 @@ static void render_position_page(void)
  8001420:	4a2b      	ldr	r2, [pc, #172]	@ (80014d0 <render_position_page+0xd8>)
  8001422:	2116      	movs	r1, #22
  8001424:	f009 fad8 	bl	800a9d8 <sniprintf>
-    OLED_Print(0, 14, buf);
+    OLED_Print(0, 12, buf);
  8001428:	463b      	mov	r3, r7
  800142a:	461a      	mov	r2, r3
- 800142c:	210e      	movs	r1, #14
+ 800142c:	210c      	movs	r1, #12
  800142e:	2000      	movs	r0, #0
  8001430:	f001 fd4c 	bl	8002ecc <OLED_Print>
 
@@ -2046,10 +2046,10 @@ static void render_position_page(void)
  8001448:	4a22      	ldr	r2, [pc, #136]	@ (80014d4 <render_position_page+0xdc>)
  800144a:	2116      	movs	r1, #22
  800144c:	f009 fac4 	bl	800a9d8 <sniprintf>
-    OLED_Print(0, 28, buf);
+    OLED_Print(0, 22, buf);
  8001450:	463b      	mov	r3, r7
  8001452:	461a      	mov	r2, r3
- 8001454:	211c      	movs	r1, #28
+ 8001454:	2116      	movs	r1, #22
  8001456:	2000      	movs	r0, #0
  8001458:	f001 fd38 	bl	8002ecc <OLED_Print>
 
@@ -2065,10 +2065,10 @@ static void render_position_page(void)
  8001470:	4a19      	ldr	r2, [pc, #100]	@ (80014d8 <render_position_page+0xe0>)
  8001472:	2116      	movs	r1, #22
  8001474:	f009 fab0 	bl	800a9d8 <sniprintf>
-    OLED_Print(0, 42, buf);
+    OLED_Print(0, 32, buf);
  8001478:	463b      	mov	r3, r7
  800147a:	461a      	mov	r2, r3
- 800147c:	212a      	movs	r1, #42	@ 0x2a
+ 800147c:	2120      	movs	r1, #32
  800147e:	2000      	movs	r0, #0
  8001480:	f001 fd24 	bl	8002ecc <OLED_Print>
 
@@ -2092,10 +2092,10 @@ static void render_position_page(void)
  80014a8:	4a0d      	ldr	r2, [pc, #52]	@ (80014e0 <render_position_page+0xe8>)
  80014aa:	2116      	movs	r1, #22
  80014ac:	f009 fa94 	bl	800a9d8 <sniprintf>
-    OLED_Print(0, 54, buf);
+    OLED_Print(0, 44, buf);
  80014b0:	463b      	mov	r3, r7
  80014b2:	461a      	mov	r2, r3
- 80014b4:	2136      	movs	r1, #54	@ 0x36
+ 80014b4:	212c      	movs	r1, #44	@ 0x2c
  80014b6:	2000      	movs	r0, #0
  80014b8:	f001 fd08 	bl	8002ecc <OLED_Print>
 
