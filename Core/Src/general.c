@@ -110,41 +110,28 @@ static void render_map_page(void)
 static void render_ultrasonic_page(void)
 {
     char line[32];
-
-    static float   last_dist[4]  = {-1.f, -1.f, -1.f, -1.f};
-    static uint8_t miss_count[4] = {0, 0, 0, 0};
-
     const char    *labels[4] = {"F", "R", "B", "L"};
     const uint8_t  y_pos[4]  = {14, 24, 34, 44};
 
     OLED_Clear();
-    OLED_Print(0, 0, "-- Ultrasonic --");
+    OLED_Print(0, 0, "-- Ultrasonic Raw --");
 
     for (int i = 0; i < 4; i++) {
-
-        if (ultrasonic[i].status == US_OK && ultrasonic[i].ready) {
-            /* New valid reading — update cache, reset miss counter */
-            last_dist[i]  = ultrasonic[i].distance_m;
-            miss_count[i] = 0;
-        } else if (ultrasonic[i].status == US_NO_ECHO) {
-            /* Genuine timeout set by CheckTimeout() — count it   */
-            if (miss_count[i] < 255) miss_count[i]++;
-        }
-        /* If status==US_OK but ready==0: trigger just fired,
-           echo not received yet — don't change miss_count         */
-
-        if (miss_count[i] >= NO_ECHO_THRESHOLD || last_dist[i] < 0.0f) {
-            snprintf(line, sizeof(line), "%s: NO ECHO", labels[i]);
-        } else {
-            snprintf(line, sizeof(line), "%s:%5.2fm %5luus",
+        /* If the sensor has a valid pulse, print the raw microseconds */
+        if (ultrasonic[i].status == US_OK) {
+            snprintf(line, sizeof(line), "%s: %lu us",
                      labels[i],
-                     (double)last_dist[i],
                      (unsigned long)ultrasonic[i].pulse_us);
         }
+        /* Otherwise, print NO ECHO */
+        else {
+            snprintf(line, sizeof(line), "%s: NO ECHO", labels[i]);
+        }
+
         OLED_Print(0, y_pos[i], line);
     }
 
-    /* Bottom row: IMU sensor status                               */
+    /* Bottom row: IMU sensor status */
     snprintf(line, sizeof(line), "MPU:%s HMC:%s",
              s_mpu_ok ? "OK" : "ERR",
              s_hmc_ok ? "OK" : "ERR");
@@ -158,31 +145,48 @@ static void render_ultrasonic_page(void)
 /* ═══════════════════════════════════════════════════════════════ */
 static void render_imu_page(void)
 {
-    char buf[22];
-    OLED_Clear();
+	char line[32]; // 16 bytes is plenty for a short label and an integer
 
-    OLED_Print(0, 0, "---- IMU ----");
+	    OLED_Clear();
 
-    /* Gyro rates in deg/s */
-    float gx = s_imu_raw.gx / 131.0f;
-    float gy = s_imu_raw.gy / 131.0f;
-    float gz = s_imu_raw.gz / 131.0f;
+	    /* ── 1. Sensor Status (Using the flags from general.c) ── */
+	    if (s_mpu_ok) OLED_Print(0, 0, "MPU:OK");
+	    else          OLED_Print(0, 0, "MPU:ERR");
 
-    snprintf(buf, sizeof(buf), "Gx%+6.1f Gy%+6.1f", (double)gx, (double)gy);
-    OLED_Print(0, 14, buf);
+	    if (s_hmc_ok) OLED_Print(0, 10, "HMC:OK");
+	    else          OLED_Print(0, 10, "HMC:ERR");
 
-    snprintf(buf, sizeof(buf), "Gz%+6.1f d/s", (double)gz);
-    OLED_Print(0, 28, buf);
+	    /* ── 2. Magnetometer Raw Data ── */
+	    snprintf(line, sizeof(line), "MX:%-6d", (int)s_mag_raw.mx);
+	    OLED_Print(0, 26, line);
 
-    /* Roll / Pitch / Yaw */
-    snprintf(buf, sizeof(buf), "R%+6.1f P%+6.1f",
-             (double)s_orient.roll, (double)s_orient.pitch);
-    OLED_Print(0, 42, buf);
+	    snprintf(line, sizeof(line), "MY:%-6d", (int)s_mag_raw.my);
+	    OLED_Print(0, 36, line);
 
-    snprintf(buf, sizeof(buf), "Yaw: %6.1f deg", (double)s_orient.yaw);
-    OLED_Print(0, 54, buf);
+	    snprintf(line, sizeof(line), "MZ:%-6d", (int)s_mag_raw.mz);
+	    OLED_Print(0, 46, line);
 
-    OLED_Update();
+	    /* ── 3. Accelerometer Raw Data ── */
+	    snprintf(line, sizeof(line), "AX:%-6d", (int)s_imu_raw.ax);
+	    OLED_Print(60, 0, line);
+
+	    snprintf(line, sizeof(line), "AY:%-6d", (int)s_imu_raw.ay);
+	    OLED_Print(60, 10, line);
+
+	    snprintf(line, sizeof(line), "AZ:%-6d", (int)s_imu_raw.az);
+	    OLED_Print(60, 20, line);
+
+	    /* ── 4. Gyroscope Raw Data ── */
+	    snprintf(line, sizeof(line), "GX:%-6d", (int)s_imu_raw.gx);
+	    OLED_Print(60, 30, line);
+
+	    snprintf(line, sizeof(line), "GY:%-6d", (int)s_imu_raw.gy);
+	    OLED_Print(60, 40, line);
+
+	    snprintf(line, sizeof(line), "GZ:%-6d", (int)s_imu_raw.gz);
+	    OLED_Print(60, 50, line);
+
+	    OLED_Update();
 }
 
 /* ═══════════════════════════════════════════════════════════════ */

@@ -280,13 +280,13 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
     if(htim->Instance == TIM2)
     {
         if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
-            ULTRASONIC_CaptureCallback(TIM_CHANNEL_1);
+            ULTRASONIC_CaptureCallback(0);  /* Sensor 0: Front */
         else if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2)
-            ULTRASONIC_CaptureCallback(TIM_CHANNEL_2);
+            ULTRASONIC_CaptureCallback(1);  /* Sensor 1: Right */
         else if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_3)
-            ULTRASONIC_CaptureCallback(TIM_CHANNEL_3);
+            ULTRASONIC_CaptureCallback(2);  /* Sensor 2: Back */
         else if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4)
-            ULTRASONIC_CaptureCallback(TIM_CHANNEL_4);
+            ULTRASONIC_CaptureCallback(3);  /* Sensor 3: Left */
     }
 }
 

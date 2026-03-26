@@ -34,7 +34,7 @@ typedef struct {
 
 void      ULTRASONIC_Init(void);
 void      ULTRASONIC_Trigger(uint8_t index);  /* 0–3              */
-void      ULTRASONIC_CaptureCallback(uint32_t channel); /* from HAL IC cb */
+void      ULTRASONIC_CaptureCallback(uint8_t idx); /* from HAL IC cb */
 void      ULTRASONIC_CheckTimeout(void);      /* call from main loop */
 float     ULTRASONIC_GetDistance(uint8_t index); /* metres, -1=invalid */
 

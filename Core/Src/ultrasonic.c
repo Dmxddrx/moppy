@@ -70,18 +70,20 @@ void ULTRASONIC_Trigger(uint8_t index)
 /*  TIM2 @ 1 MHz → CCR value in microseconds.                      */
 /*  Both-edge mode: odd call = rising, even call = falling.        */
 /* ─────────────────────────────────────────────────────────────── */
-void ULTRASONIC_CaptureCallback(uint32_t channel)
+/* ─────────────────────────────────────────────────────────────── */
+/* ULTRASONIC_CaptureCallback                                     */
+/* Accepts sensor index (0, 1, 2, 3) from stm32f4xx_it.c          */
+/* ─────────────────────────────────────────────────────────────── */
+void ULTRASONIC_CaptureCallback(uint8_t idx)
 {
-    uint8_t  idx;
     uint32_t ccr;
 
-    switch (channel) {
-        case TIM_CHANNEL_1: idx = 0; ccr = htim2.Instance->CCR1; break;
-        case TIM_CHANNEL_2: idx = 1; ccr = htim2.Instance->CCR2; break;
-        case TIM_CHANNEL_3: idx = 2; ccr = htim2.Instance->CCR3; break;
-        case TIM_CHANNEL_4: idx = 3; ccr = htim2.Instance->CCR4; break;
-        default: return;
-    }
+    /* Get the correct Capture/Compare Register value based on index */
+    if (idx == 0)      ccr = htim2.Instance->CCR1;
+    else if (idx == 1) ccr = htim2.Instance->CCR2;
+    else if (idx == 2) ccr = htim2.Instance->CCR3;
+    else if (idx == 3) ccr = htim2.Instance->CCR4;
+    else return;
 
     if (!echo_active[idx]) {
         /* ── Rising edge: record start time ─────────────────── */
