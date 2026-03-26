@@ -7,10 +7,12 @@
 /* ── Physics ────────────────────────────────────────────────────
    V = 331.3 + 0.606 × T    (T in °C)
    At T = 30°C:  V = 331.3 + 18.18 = 349.48 m/s
-   Distance = (pulse_µs × V) / 2 000 000                        */
-#define US_SOUND_SPEED_MPS   349.48f    /* m/s at 30 °C           */
+   Distance = (pulse_µs × V) / 2 000 000                       	   */
+#define US_SOUND_SPEED_MPS   349.48f    /* m/s at 30 °C            */
 #define US_MAX_DISTANCE_M      4.00f    /* SR04 practical max      */
-#define US_TIMEOUT_MS           50U     /* no-echo timeout         */
+#define US_TIMEOUT_MS           50U     /* ms with no echo = miss  */
+
+#define US_COUNT  4
 
 typedef enum {
     US_NO_ECHO = 0,   /* triggered but no echo — OOR or disconnected */

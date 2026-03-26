@@ -1,5 +1,5 @@
 ../Core/Src/ultrasonic.c:22:6:ULTRASONIC_Init	2
-../Core/Src/ultrasonic.c:44:6:ULTRASONIC_Trigger	3
-../Core/Src/ultrasonic.c:66:6:ULTRASONIC_CaptureCallback	8
-../Core/Src/ultrasonic.c:111:6:ULTRASONIC_CheckTimeout	4
-../Core/Src/ultrasonic.c:124:7:ULTRASONIC_GetDistance	4
+../Core/Src/ultrasonic.c:51:6:ULTRASONIC_Trigger	3
+../Core/Src/ultrasonic.c:73:6:ULTRASONIC_CaptureCallback	8
+../Core/Src/ultrasonic.c:119:6:ULTRASONIC_CheckTimeout	4
+../Core/Src/ultrasonic.c:135:7:ULTRASONIC_GetDistance	4

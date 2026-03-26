@@ -56,7 +56,7 @@ void OLED_Clear(void) {
 //Draw text into the buffer only (no immediate update)
 void OLED_Print(uint8_t x, uint8_t y, const char *str) {
 	SSD1306_GotoXY(x, y);
-	SSD1306_Puts((char*)str, &Font_7x10, SSD1306_COLOR_WHITE);
+	SSD1306_Puts((char*)str, &Font_5x7, SSD1306_COLOR_WHITE);
 }
 
 /* ================================================================

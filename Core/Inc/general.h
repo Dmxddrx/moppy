@@ -24,23 +24,20 @@
    Page 1: Ultrasonic distances (4 sensors)
    Page 2: IMU data (accel, gyro, heading)
    Page 3: Position & speed                                       */
-#define OLED_PAGE_MAP       0
-#define OLED_PAGE_ULTRASONIC 1
-#define OLED_PAGE_IMU       2
-#define OLED_PAGE_POSITION  3
-#define OLED_NUM_PAGES      4
+#define OLED_PAGE_MAP       	0
+#define OLED_PAGE_ULTRASONIC 	1
+#define OLED_PAGE_IMU       	2
+#define OLED_PAGE_POSITION  	3
+#define OLED_NUM_PAGES      	4
 
-/* ── OLED update rate ───────────────────────────────────────────
-   SSD1306 I2C update takes ~23 ms at 400 kHz.
-   Limit to 5 Hz to avoid stalling the main loop.               */
+/* ── Timing ─────────────────────────────────────────────────────
+   OLED    : 5 Hz  (200 ms) — SSD1306 I2C update takes ~23 ms
+   US      : one sensor per 25 ms = full 4-sensor cycle = 100 ms
+   IMU     : 100 Hz (10 ms)                                      */
 #define OLED_UPDATE_INTERVAL_MS   200U
+#define US_TRIGGER_INTERVAL_MS     25U
+#define IMU_UPDATE_INTERVAL_MS     10U
 
-/* ── Ultrasonic trigger interval ────────────────────────────────
-   Round-robin one sensor per period = 4 × 25 ms = 100 ms / full cycle */
-#define US_TRIGGER_INTERVAL_MS    25U
-
-/* ── IMU update interval ────────────────────────────────────────*/
-#define IMU_UPDATE_INTERVAL_MS    10U
 
 /* Global map — accessible by slam_lite and other modules         */
 extern Map g_map;

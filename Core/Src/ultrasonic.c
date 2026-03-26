@@ -29,7 +29,9 @@ void ULTRASONIC_Init(void)
         echo_active[i]           = 0;
     }
 
-    /* Start input-capture interrupts on all four channels */
+    /* Start input-capture interrupts on all four channels.
+       HAL_TIM_IC_CaptureCallback lives in stm32f4xx_it.c —
+       NOT here — to avoid duplicate symbol linker error.          */
     HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_1);
     HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_2);
     HAL_TIM_IC_Start_IT(&htim2, TIM_CHANNEL_3);
@@ -38,8 +40,13 @@ void ULTRASONIC_Init(void)
 
 /* ─────────────────────────────────────────────────────────────── */
 /*  ULTRASONIC_Trigger                                              */
-/*  Sends a ≥10 µs HIGH pulse on the selected TRIG pin.            */
-/*  At 168 MHz: 1680 NOP iterations ≈ 10 µs.                      */
+/*  Sends a >=10 µs HIGH pulse on the TRIG pin.                    */
+/*  At 168 MHz core: 1680 NOP ≈ 10 µs.                             */
+/*                                                                  */
+/*  FIX: distance_m and status are NOT reset here.                  */
+/*  They keep the last good value until CheckTimeout() decides      */
+/*  the sensor genuinely missed an echo. This prevents the display  */
+/*  from flashing NO ECHO between every trigger/echo cycle.         */
 /* ─────────────────────────────────────────────────────────────── */
 void ULTRASONIC_Trigger(uint8_t index)
 {
@@ -51,14 +58,14 @@ void ULTRASONIC_Trigger(uint8_t index)
     HAL_GPIO_WritePin(trig_port[index], trig_pin[index], GPIO_PIN_RESET);
 
     ultrasonic[index].ready      = 0;
-    ultrasonic[index].status     = US_NO_ECHO;
-    ultrasonic[index].distance_m = -1.0f;
+    //ultrasonic[index].status     = US_NO_ECHO;
+    //ultrasonic[index].distance_m = -1.0f;
     echo_active[index]           = 0;
     trig_time_ms[index]          = HAL_GetTick();
 }
 
 /* ─────────────────────────────────────────────────────────────── */
-/*  ULTRASONIC_CaptureCallback                                      */
+/*  ULTRASONIC_CaptureCallback                                     */
 /*  Called from HAL_TIM_IC_CaptureCallback (see bottom of file).   */
 /*  TIM2 @ 1 MHz → CCR value in microseconds.                      */
 /*  Both-edge mode: odd call = rising, even call = falling.        */
@@ -105,8 +112,9 @@ void ULTRASONIC_CaptureCallback(uint32_t channel)
 
 /* ─────────────────────────────────────────────────────────────── */
 /*  ULTRASONIC_CheckTimeout                                         */
-/*  Call from main loop. If no echo arrives within US_TIMEOUT_MS   */
-/*  after trigger, mark the channel as US_NO_ECHO.                 */
+/*  Call from GENERAL_Update() every loop tick.                     */
+/*  Only marks US_NO_ECHO after US_TIMEOUT_MS with no echo —        */
+/*  this is the ONLY place that invalidates distance_m.             */
 /* ─────────────────────────────────────────────────────────────── */
 void ULTRASONIC_CheckTimeout(void)
 {
@@ -121,6 +129,9 @@ void ULTRASONIC_CheckTimeout(void)
 }
 
 /* ─────────────────────────────────────────────────────────────── */
+/*  ULTRASONIC_GetDistance                                          */
+/*  Returns distance in metres, or -1.0 if no valid reading.        */
+/* ─────────────────────────────────────────────────────────────── */
 float ULTRASONIC_GetDistance(uint8_t index)
 {
     if (index >= 4)                              return -1.0f;
@@ -129,21 +140,3 @@ float ULTRASONIC_GetDistance(uint8_t index)
     return ultrasonic[index].distance_m;
 }
 
-/* ─────────────────────────────────────────────────────────────── */
-/*  HAL weak-callback override                                      */
-/*  Place this here OR in stm32f4xx_it.c — not both.               */
-/* ─────────────────────────────────────────────────────────────── */
-/*void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
-{
-    if (htim->Instance != TIM2) return;
-
-    uint32_t ch;
-    switch (htim->Channel) {
-        case HAL_TIM_ACTIVE_CHANNEL_1: ch = TIM_CHANNEL_1; break;
-        case HAL_TIM_ACTIVE_CHANNEL_2: ch = TIM_CHANNEL_2; break;
-        case HAL_TIM_ACTIVE_CHANNEL_3: ch = TIM_CHANNEL_3; break;
-        case HAL_TIM_ACTIVE_CHANNEL_4: ch = TIM_CHANNEL_4; break;
-        default: return;
-    }
-    ULTRASONIC_CaptureCallback(ch);
-}*/

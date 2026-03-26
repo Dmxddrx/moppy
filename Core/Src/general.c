@@ -97,56 +97,58 @@ static void render_map_page(void)
 }
 
 /* ═══════════════════════════════════════════════════════════════ */
-/* OLED ULTRASONIC PAGE                                           */
+/*  PAGE 1 — ULTRASONIC                                            */
+/*                                                                  */
+/*  FIX: last_dist[] caches the most recent valid reading per      */
+/*  sensor. miss_count[] only shows NO ECHO after 4 consecutive    */
+/*  missed echoes — prevents flashing caused by the brief window   */
+/*  between Trigger() and CaptureCallback() firing.                */
 /* ═══════════════════════════════════════════════════════════════ */
+
+#define NO_ECHO_THRESHOLD  4   /* consecutive misses before showing NO ECHO */
+
 static void render_ultrasonic_page(void)
 {
-    char buf[22];
-    OLED_Clear();
+    char line[32];
 
-    /* Header */
+    static float   last_dist[4]  = {-1.f, -1.f, -1.f, -1.f};
+    static uint8_t miss_count[4] = {0, 0, 0, 0};
+
+    const char    *labels[4] = {"F", "R", "B", "L"};
+    const uint8_t  y_pos[4]  = {14, 24, 34, 44};
+
+    OLED_Clear();
     OLED_Print(0, 0, "-- Ultrasonic --");
 
-    /* Sensor angles: 0=Front, 1=Right, 2=Rear, 3=Left            */
-    float d[4];
     for (int i = 0; i < 4; i++) {
-        d[i] = ULTRASONIC_GetDistance(i);
+
+        if (ultrasonic[i].status == US_OK && ultrasonic[i].ready) {
+            /* New valid reading — update cache, reset miss counter */
+            last_dist[i]  = ultrasonic[i].distance_m;
+            miss_count[i] = 0;
+        } else if (ultrasonic[i].status == US_NO_ECHO) {
+            /* Genuine timeout set by CheckTimeout() — count it   */
+            if (miss_count[i] < 255) miss_count[i]++;
+        }
+        /* If status==US_OK but ready==0: trigger just fired,
+           echo not received yet — don't change miss_count         */
+
+        if (miss_count[i] >= NO_ECHO_THRESHOLD || last_dist[i] < 0.0f) {
+            snprintf(line, sizeof(line), "%s: NO ECHO", labels[i]);
+        } else {
+            snprintf(line, sizeof(line), "%s:%5.2fm %5luus",
+                     labels[i],
+                     (double)last_dist[i],
+                     (unsigned long)ultrasonic[i].pulse_us);
+        }
+        OLED_Print(0, y_pos[i], line);
     }
 
-    /* Row 1: Front + Right */
-    if (d[0] >= 0.0f)
-        snprintf(buf, sizeof(buf), "F:%5.2fm", (double)d[0]);
-    else
-        snprintf(buf, sizeof(buf), "F: ----m");
-    OLED_Print(0, 14, buf);
-
-    if (d[1] >= 0.0f)
-        snprintf(buf, sizeof(buf), "R:%5.2fm", (double)d[1]);
-    else
-        snprintf(buf, sizeof(buf), "R: ----m");
-    OLED_Print(65, 14, buf);
-
-    /* Row 2: Rear + Left */
-    if (d[2] >= 0.0f)
-        snprintf(buf, sizeof(buf), "B:%5.2fm", (double)d[2]);
-    else
-        snprintf(buf, sizeof(buf), "B: ----m");
-    OLED_Print(0, 28, buf);
-
-    if (d[3] >= 0.0f)
-        snprintf(buf, sizeof(buf), "L:%5.2fm", (double)d[3]);
-    else
-        snprintf(buf, sizeof(buf), "L: ----m");
-    OLED_Print(65, 28, buf);
-
-    /* Row 3: status bar */
-    snprintf(buf, sizeof(buf), "MPU:%s HMC:%s",
-             s_mpu_ok ? "OK" : "ER",
-             s_hmc_ok ? "OK" : "ER");
-    OLED_Print(0, 42, buf);
-
-    /* Row 4: sound speed reminder */
-    OLED_Print(0, 54, "V=349.5m/s @30C");
+    /* Bottom row: IMU sensor status                               */
+    snprintf(line, sizeof(line), "MPU:%s HMC:%s",
+             s_mpu_ok ? "OK" : "ERR",
+             s_hmc_ok ? "OK" : "ERR");
+    OLED_Print(0, 54, line);
 
     OLED_Update();
 }
