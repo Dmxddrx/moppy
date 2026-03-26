@@ -35,7 +35,8 @@ Core/Src/general.o: ../Core/Src/general.c ../Core/Inc/general.h \
  ../Core/Inc/motor.h ../Core/Inc/motor_pwm.h ../Core/Inc/btns.h \
  ../Core/Inc/oled.h ../Core/Inc/odometry.h ../Core/Inc/mpu6050.h \
  ../Core/Inc/mapping.h ../Core/Inc/ir.h ../Core/Inc/stable.h \
- C:/Users/DMXHP/Documents/Programing_Files_IoT/STM32CubeIDE/workspace_2.0.0/STM32F407VET6/Moppy/Drivers/Middlewares/SSD1306/fonts.h
+ C:/Users/DMXHP/Documents/Programing_Files_IoT/STM32CubeIDE/workspace_2.0.0/STM32F407VET6/Moppy/Drivers/Middlewares/SSD1306/fonts.h \
+ ../Core/Inc/coverage.h ../Core/Inc/motion.h ../Core/Inc/pid.h
 ../Core/Inc/general.h:
 ../Core/Inc/mpu6050.h:
 ../Core/Inc/main.h:
@@ -83,3 +84,6 @@ Core/Src/general.o: ../Core/Src/general.c ../Core/Inc/general.h \
 ../Core/Inc/ir.h:
 ../Core/Inc/stable.h:
 C:/Users/DMXHP/Documents/Programing_Files_IoT/STM32CubeIDE/workspace_2.0.0/STM32F407VET6/Moppy/Drivers/Middlewares/SSD1306/fonts.h:
+../Core/Inc/coverage.h:
+../Core/Inc/motion.h:
+../Core/Inc/pid.h:

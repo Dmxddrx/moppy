@@ -113,10 +113,6 @@ void Error_Handler(void);
 #define M5_PWM_GPIO_Port GPIOD
 #define M6_PWM_Pin GPIO_PIN_14
 #define M6_PWM_GPIO_Port GPIOD
-#define ENC2_A_Pin GPIO_PIN_6
-#define ENC2_A_GPIO_Port GPIOC
-#define ENC2_B_Pin GPIO_PIN_7
-#define ENC2_B_GPIO_Port GPIOC
 #define M4_BIN1_Pin GPIO_PIN_8
 #define M4_BIN1_GPIO_Port GPIOC
 #define M4_BIN2_Pin GPIO_PIN_9

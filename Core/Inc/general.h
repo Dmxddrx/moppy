@@ -14,6 +14,8 @@
 #include "ir.h"
 #include "stable.h"
 #include "fonts.h"
+#include "coverage.h"
+#include "motion.h"
 
 /* ── Feature switches ───────────────────────────────────────────*/
 #define ENABLE_OLED_SELFTEST   0

@@ -50,7 +50,7 @@ void ENCODER_IC_Callback(uint8_t index, uint32_t captured)
     if(captured >= last)
         period = captured - last;
     else
-        period = (0xFFFFFFFF - last) + captured + 1;   /* timer overflow */
+        period = (0xFFFF - last) + captured + 1;   /*16 bit timer overflow */
 
     if(period > 0 && period < ENC_SPEED_TIMEOUT)
     {
