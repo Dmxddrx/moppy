@@ -7,13 +7,13 @@ typedef enum
 {
     COVERAGE_IDLE,
     COVERAGE_FORWARD,
-    COVERAGE_TURN
+    COVERAGE_TURN_1,    /* First 90-degree turn */
+    COVERAGE_SHIFT,     /* Drive forward to the next row */
+    COVERAGE_TURN_2     /* Second 90-degree turn to face back */
 } CoverageState;
 
 void COVERAGE_Init(void);
 
-/* FIX: added current_yaw so TURN state can wait for the robot
-        to physically complete the turn before driving forward. */
 void COVERAGE_Update(RobotPose pose,
                      float     current_yaw,
                      int       obstacle,

@@ -19,6 +19,7 @@ typedef enum {
 ENC_Status ENCODER_GetStatus(uint8_t index);
 
 void    ENCODER_Init(void);
+void    ENCODER_IC_Callback(uint8_t index, uint32_t captured);
 void    ENCODER_Update(void);             /* call from TIM6 1ms interrupt */
 
 int32_t    ENCODER_GetCount(uint8_t index);

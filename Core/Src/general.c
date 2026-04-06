@@ -256,10 +256,18 @@ void GENERAL_Init(void)
     ODOM_Init();
     Map_Init(&g_map);
 
+    COVERAGE_Init();
+	MOTION_Init();
+	ENCODER_Init();
+
     /* Splash hold */
     HAL_Delay(500);
     OLED_Clear();
     OLED_Update();
+
+    MOTOR_Init();         /* Initializes the motor arrays */
+		MOTORPWM_Init();      /* Initializes the PWM variables */
+		MOTOR_WakeAll();      /* WAKES UP THE MOTOR DRIVERS! */
 }
 
 /* ═══════════════════════════════════════════════════════════════ */
@@ -321,16 +329,14 @@ void GENERAL_Update(void)
 		int left_pwm, right_pwm;
 		MOTION_DriveStraight(target_heading, s_orient.yaw, target_speed, dt, &left_pwm, &right_pwm);
 
-		/* 7. Drive Physical Motors
+		/* 7. Drive Physical Motors 1 and 2
 			  Convert signed PWM into absolute speed and forward/backward direction */
 		uint8_t left_dir  = (left_pwm >= 0)  ? MOTOR_FORWARD : MOTOR_BACKWARD;
 		uint8_t right_dir = (right_pwm >= 0) ? MOTOR_FORWARD : MOTOR_BACKWARD;
 
-		/* Apply to hardware (Assuming M1/M2 are Left, M4/M5 are Right) */
-		MOTOR_Set(0, left_dir,  abs(left_pwm));  // M1
-		MOTOR_Set(1, left_dir,  abs(left_pwm));  // M2
-		MOTOR_Set(3, right_dir, abs(right_pwm)); // M4
-		MOTOR_Set(4, right_dir, abs(right_pwm)); // M5
+		/* Send to Motor 1 (Index 0) and Motor 2 (Index 1) */
+		MOTOR_Set(0, left_dir,  abs(left_pwm));
+		MOTOR_Set(1, right_dir, abs(right_pwm));
 	}
 
     /* ── Ultrasonic round-robin (25 ms per sensor) ───────────── */

@@ -34,12 +34,15 @@ static uint32_t pwm_channel[MOTOR_MAX] =
 
 void MOTORPWM_Init(void)
 {
-    for(uint8_t i = 0; i < MOTOR_MAX; i++)
-    {
-        HAL_TIM_PWM_Start(pwm_htim[i], pwm_channel[i]);
-        __HAL_TIM_SET_COMPARE(pwm_htim[i], pwm_channel[i], 0);
-        current_pwm[i] = 0;
-    }
+    /* Start TIM3 channels for Motors 1, 2, 3 */
+    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
+    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
+    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
+
+    /* Start TIM4 channels for Motors 4, 5, 6 */
+    HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_1);
+    HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_2);
+    HAL_TIM_PWM_Start(&htim4, TIM_CHANNEL_3);
 }
 
 /* ------------------------------------------------------------------

@@ -307,6 +307,7 @@ void DMA2_Stream7_IRQHandler(void)
 /* USER CODE BEGIN 1 */
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
+    /* 1. Handle Ultrasonic Sensors (TIM2) */
     if(htim->Instance == TIM2)
     {
         if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
@@ -318,12 +319,14 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
         else if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4)
             ULTRASONIC_CaptureCallback(3);  /* Sensor 3: Left */
     }
+    /* 2. ADD THIS: Handle Encoders (TIM1 and TIM8) */
+    else if(htim->Instance == TIM1 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
+    {
+        ENCODER_IC_Callback(0, HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1));
+    }
+    else if(htim->Instance == TIM8 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
+    {
+        ENCODER_IC_Callback(1, HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1));
+    }
 }
-
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-    if(htim->Instance == TIM6)
-        ENCODER_Update();
-}
-
 /* USER CODE END 1 */

@@ -1,4 +1,4 @@
-../Core/Src/coverage.c:25:14:wrap360	16	static
-../Core/Src/coverage.c:33:14:angle_diff	24	static
-../Core/Src/coverage.c:44:6:COVERAGE_Init	4	static
-../Core/Src/coverage.c:52:6:COVERAGE_Update	40	static
+../Core/Src/coverage.c:18:14:wrap360	16	static
+../Core/Src/coverage.c:24:14:angle_diff	24	static
+../Core/Src/coverage.c:31:6:COVERAGE_Init	4	static
+../Core/Src/coverage.c:38:6:COVERAGE_Update	56	static
