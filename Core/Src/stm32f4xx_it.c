@@ -329,4 +329,14 @@ void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
         ENCODER_IC_Callback(1, HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1));
     }
 }
+
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+    /* Every 1ms, TIM6 fires and checks if the wheels have stalled */
+    if (htim->Instance == TIM6)
+    {
+        ENCODER_Update();
+    }
+}
+
 /* USER CODE END 1 */

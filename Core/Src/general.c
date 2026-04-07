@@ -30,6 +30,14 @@ static RobotPose        s_pose     = {0};
 static uint8_t s_mpu_ok = 0;
 static uint8_t s_hmc_ok = 0;
 
+typedef enum {
+    MODE_WALL_FOLLOW,
+    MODE_COVERAGE,
+    MODE_IDLE
+} RobotMode;
+
+static RobotMode s_robot_mode = MODE_WALL_FOLLOW; /* Start by tracing the walls */
+
 /* ═══════════════════════════════════════════════════════════════ */
 /* OLED MAP PAGE renderer                                         */
 /* Draws 8 × 4 = 32 blocks of 16 × 16 pixels.                    */
@@ -266,8 +274,18 @@ void GENERAL_Init(void)
     OLED_Update();
 
     MOTOR_Init();         /* Initializes the motor arrays */
-		MOTORPWM_Init();      /* Initializes the PWM variables */
-		MOTOR_WakeAll();      /* WAKES UP THE MOTOR DRIVERS! */
+	MOTORPWM_Init();      /* Initializes the PWM variables */
+	MOTOR_WakeAll();      /* WAKES UP THE MOTOR DRIVERS! */
+
+	/* ADD THESE LINES TO FIX THE 30m TELEPORT BUG: */
+	/* 1. Clear any fake encoder noise that happened during boot */
+	ENCODER_Reset(0);
+	ENCODER_Reset(1);
+
+	/* 2. Reset the stopwatches so 'dt' is perfectly 0.01s on loop 1! */
+	s_last_imu_ms  = HAL_GetTick();
+	s_last_us_ms   = HAL_GetTick();
+	s_last_oled_ms = HAL_GetTick();
 }
 
 /* ═══════════════════════════════════════════════════════════════ */
@@ -280,64 +298,88 @@ void GENERAL_Update(void)
     /* ── Buttons ─────────────────────────────────────────────── */
     BTNS_Update();
     if (BTNS_Get_OLEDPage() == BTN_PRESSED) {
+        /* Change OLED Page */
         s_oled_page = (s_oled_page + 1) % OLED_NUM_PAGES;
+
+        /* Optional: Also use this button to force switch to Coverage mode
+           once you are happy with the perimeter map */
+        if (s_robot_mode == MODE_WALL_FOLLOW) {
+            s_robot_mode = MODE_COVERAGE;
+        }
     }
 
-    /* ── IMU + Orientation (10 ms period = 100 Hz) ───────────── */
     /* ── Autonomous Loop (10 ms period = 100 Hz) ───────────── */
-	if ((now - s_last_imu_ms) >= IMU_UPDATE_INTERVAL_MS) {
-		float dt = (float)(now - s_last_imu_ms) * 0.001f;
-		s_last_imu_ms = now;
+    if ((now - s_last_imu_ms) >= IMU_UPDATE_INTERVAL_MS) {
+        float dt = (float)(now - s_last_imu_ms) * 0.001f;
+        s_last_imu_ms = now;
 
-		/* 1. Read IMU & Fused Yaw */
-		if (s_mpu_ok) MPU6050_ReadRaw(&s_imu_raw);
-		if (s_hmc_ok) HMC5883L_ReadRaw(&s_mag_raw);
-		STABLE_Update(&s_imu_raw, &s_mag_raw, dt);
-		s_orient = STABLE_GetOrientation();
+        /* 1. Read IMU & Fused Yaw */
+        if (s_mpu_ok) MPU6050_ReadRaw(&s_imu_raw);
+        if (s_hmc_ok) HMC5883L_ReadRaw(&s_mag_raw);
+        STABLE_Update(&s_imu_raw, &s_mag_raw, dt);
+        s_orient = STABLE_GetOrientation();
 
-		/* 2. Read Encoders (rad/s) and convert to m/s
-			  Radius = 0.065m / 2 = 0.0325m */
-		float v_left  = ENCODER_GetSpeed(0) * 0.0325f;
-		float v_right = ENCODER_GetSpeed(1) * 0.0325f;
+        /* 2. Read Encoders (rad/s) and convert to m/s
+              Radius = 0.065m / 2 = 0.0325m */
+        float v_left  = ENCODER_GetSpeed(0) * 0.0325f;
+        float v_right = ENCODER_GetSpeed(1) * 0.0325f;
 
-		/* Apply sign based on motor direction so reversing works */
-		if (MOTOR_GetDirection(0) < 0) v_left  = -v_left;
-		if (MOTOR_GetDirection(3) < 0) v_right = -v_right;
+        /* Apply sign based on motor direction so reversing works */
+        if (MOTOR_GetDirection(0) < 0) v_left  = -v_left;
+        if (MOTOR_GetDirection(1) < 0) v_right = -v_right;
 
-		/* 3. Update Map Position */
-		ODOM_UpdateEncoders(v_left, v_right, s_orient.yaw, dt);
-		s_pose = ODOM_GetPose();
-		Map_UpdateRobotPose(&g_map, s_pose.x, s_pose.y, s_pose.theta);
+        /* 3. Update Map Position */
+        ODOM_UpdateEncoders(v_left, v_right, s_orient.yaw, dt);
+        s_pose = ODOM_GetPose();
+        Map_UpdateRobotPose(&g_map, s_pose.x, s_pose.y, s_pose.theta);
 
-		/* 4. Obstacle Detection for Coverage Planner
-			  Trigger a turn if ANY front/side sensor sees a wall under 25cm */
-		int obstacle = 0;
-		for(int i=0; i<4; i++) {
-			float dist = ULTRASONIC_GetDistance(i);
-			if(dist > 0.05f && dist < 0.25f) {
-				obstacle = 1;
-				break;
-			}
-		}
+        /* 4. Read Sensors for the Brain */
+        float front_dist = ULTRASONIC_GetDistance(0); /* Front Sensor */
+        float right_dist = ULTRASONIC_GetDistance(1); /* Right Sensor */
 
-		/* 5. Coverage Brain: Get Target Heading & Speed */
-		float target_heading = 0.0f;
-		int target_speed = 0;
-		COVERAGE_Update(s_pose, s_orient.yaw, obstacle, &target_heading, &target_speed);
+        /* Trigger a turn/avoidance if front sensor sees a wall under 25cm */
+        int obstacle = (front_dist > 0.05f && front_dist < 0.25f) ? 1 : 0;
 
-		/* 6. Motion Steering: Calculate left/right PWM to hold heading */
-		int left_pwm, right_pwm;
-		MOTION_DriveStraight(target_heading, s_orient.yaw, target_speed, dt, &left_pwm, &right_pwm);
+        int left_pwm = 0;
+        int right_pwm = 0;
 
-		/* 7. Drive Physical Motors 1 and 2
-			  Convert signed PWM into absolute speed and forward/backward direction */
-		uint8_t left_dir  = (left_pwm >= 0)  ? MOTOR_FORWARD : MOTOR_BACKWARD;
-		uint8_t right_dir = (right_pwm >= 0) ? MOTOR_FORWARD : MOTOR_BACKWARD;
+        /* 5. Master State Machine (Wall Follow vs Coverage) */
+        if (s_robot_mode == MODE_WALL_FOLLOW)
+        {
+            /* Goal: Follow the right-side wall at exactly 15cm distance */
+            if (obstacle) {
+                /* Corner detected ahead! Turn left sharply to avoid crashing */
+                left_pwm  = -250;
+                right_pwm =  250;
+            } else if (right_dist > 0.05f && right_dist < 1.0f) {
+                /* Right wall is visible, engage PID wall follower */
+                WALLFOLLOW_Update(right_dist, 0.15f, 300, &left_pwm, &right_pwm);
+            } else {
+                /* Lost the right wall (e.g. at an outer corner), gently curve right to find it */
+                left_pwm  = 800;
+                right_pwm = 800;
+            }
+        }
+        else if (s_robot_mode == MODE_COVERAGE)
+        {
+            /* Goal: Snake pattern across the room */
+            float target_heading = 0.0f;
+            int target_speed = 0;
 
-		/* Send to Motor 1 (Index 0) and Motor 2 (Index 1) */
-		MOTOR_Set(0, left_dir,  abs(left_pwm));
-		MOTOR_Set(1, right_dir, abs(right_pwm));
-	}
+            COVERAGE_Update(s_pose, s_orient.yaw, obstacle, &target_heading, &target_speed);
+
+            /* Motion Steering: Calculate left/right PWM to hold heading */
+            MOTION_DriveStraight(target_heading, s_orient.yaw, target_speed, dt, &left_pwm, &right_pwm);
+        }
+
+        /* 6. Drive Physical Motors 1 and 2
+              Convert signed PWM into absolute speed and forward/backward direction */
+        uint8_t left_dir  = (left_pwm >= 0)  ? MOTOR_FORWARD : MOTOR_BACKWARD;
+        uint8_t right_dir = (right_pwm >= 0) ? MOTOR_FORWARD : MOTOR_BACKWARD;
+
+        MOTOR_Set(0, left_dir,  abs(left_pwm));
+        MOTOR_Set(1, right_dir, abs(right_pwm));
+    }
 
     /* ── Ultrasonic round-robin (25 ms per sensor) ───────────── */
     if ((now - s_last_us_ms) >= US_TRIGGER_INTERVAL_MS) {

@@ -4,11 +4,11 @@
 extern TIM_HandleTypeDef htim2;
 
 /* ── Module state ───────────────────────────────────────────────*/
-ULTRASONIC_Data ultrasonic[4] = {0};
+volatile ULTRASONIC_Data ultrasonic[4] = {0};
 
-static uint32_t echo_start[4]  = {0};
-static uint8_t  echo_active[4] = {0};  /* 1 = waiting for falling edge */
-static uint32_t trig_time_ms[4]= {0};  /* for timeout detection        */
+static volatile uint32_t echo_start[4]  = {0};
+static volatile uint8_t  echo_active[4] = {0};  /* 1 = waiting for falling edge */
+static volatile uint32_t trig_time_ms[4]= {0};  /* for timeout detection        */
 
 /* Trigger GPIO (from main.h defines) */
 static GPIO_TypeDef * const trig_port[4] = {
@@ -89,27 +89,37 @@ void ULTRASONIC_CaptureCallback(uint8_t idx)
         /* ── Rising edge: record start time ─────────────────── */
         echo_start[idx]  = ccr;
         echo_active[idx] = 1;
+
     } else {
-        /* ── Falling edge: compute pulse width ──────────────── */
-        uint32_t pulse;
-        if (ccr >= echo_start[idx]) {
-            pulse = ccr - echo_start[idx];
-        } else {
-            /* Timer rollover (TIM2 is 32-bit so very rare)      */
-            pulse = (0xFFFFFFFFUL - echo_start[idx]) + ccr + 1UL;
-        }
+		/* ── Falling edge: compute pulse width ──────────────── */
+		uint32_t pulse;
+		if (ccr >= echo_start[idx]) {
+			pulse = ccr - echo_start[idx];
+		} else {
+			/* Timer rollover (TIM2 is 32-bit so very rare) */
+			pulse = (0xFFFFFFFFUL - echo_start[idx]) + ccr + 1UL;
+		}
 
-        ultrasonic[idx].pulse_us   = pulse;
-        ultrasonic[idx].distance_m = (pulse * US_SOUND_SPEED_MPS) / 2000000.0f;
+		/* THE FIX: Phase Inversion & Validation Filter!
+		   A real HC-SR04 pulse is always between 150us (2cm) and 35000us.
+		   If it's outside this range, the rising/falling edges got swapped. */
+		if (pulse > 150 && pulse < 35000)
+		{
+			ultrasonic[idx].pulse_us   = pulse;
+			ultrasonic[idx].distance_m = (pulse * US_SOUND_SPEED_MPS) / 2000000.0f;
 
-        if (ultrasonic[idx].distance_m > US_MAX_DISTANCE_M) {
-            ultrasonic[idx].distance_m = US_MAX_DISTANCE_M;
-        }
+			if (ultrasonic[idx].distance_m > US_MAX_DISTANCE_M) {
+				ultrasonic[idx].distance_m = US_MAX_DISTANCE_M;
+			}
 
-        ultrasonic[idx].ready  = 1;
-        ultrasonic[idx].status = US_OK;
-        echo_active[idx]       = 0;
-    }
+			ultrasonic[idx].ready  = 1;
+			ultrasonic[idx].status = US_OK;
+		}
+
+		/* Always clear the active state so the next trigger starts fresh,
+		   even if the data was rejected! */
+		echo_active[idx] = 0;
+	}
 }
 
 /* ─────────────────────────────────────────────────────────────── */

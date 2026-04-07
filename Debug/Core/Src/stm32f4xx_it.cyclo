@@ -15,3 +15,4 @@
 ../Core/Src/stm32f4xx_it.c:282:6:DMA2_Stream2_IRQHandler	1
 ../Core/Src/stm32f4xx_it.c:296:6:DMA2_Stream7_IRQHandler	1
 ../Core/Src/stm32f4xx_it.c:308:6:HAL_TIM_IC_CaptureCallback	10
+../Core/Src/stm32f4xx_it.c:333:6:HAL_TIM_PeriodElapsedCallback	2

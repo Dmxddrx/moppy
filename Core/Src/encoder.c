@@ -4,6 +4,7 @@
 
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim8;
+extern TIM_HandleTypeDef htim6;
 
 /* ----------------------------------------------------------------
    All state updated exclusively from interrupts — no polling
@@ -28,6 +29,9 @@ void ENCODER_Init(void)
     /* Start input capture interrupt on both encoder channels */
     HAL_TIM_IC_Start_IT(&htim1, TIM_CHANNEL_1);   /* ENC1_A PE9 */
     HAL_TIM_IC_Start_IT(&htim8, TIM_CHANNEL_1);   /* ENC2_A PC6 */
+
+    /* ADD THIS: Start the 1ms stall-detection timer */
+    HAL_TIM_Base_Start_IT(&htim6);
 }
 
 /* ================================================================
@@ -39,25 +43,38 @@ void ENCODER_IC_Callback(uint8_t index, uint32_t captured)
 {
     if(index >= ENCODER_COUNT) return;
 
-    enc_total[index]++;
-    enc_status[index] = ENC_OK;
-
-    /* Speed from pulse interval — more accurate than periodic sampling */
     uint32_t last = enc_last_capture[index];
-    enc_last_capture[index] = captured;
-
     uint32_t period;
+
     if(captured >= last)
         period = captured - last;
     else
-        period = (0xFFFF - last) + captured + 1;   /*16 bit timer overflow */
+        period = (0xFFFF - last) + captured + 1;
 
-    if(period > 0 && period < ENC_SPEED_TIMEOUT)
+    /* FIX 1: Electrical Noise Filter
+       If the pulse period is < 1000us (1ms), it means the wheel is spinning
+       at > 3000 RPM. This is impossible, so it must be electrical noise. */
+    if (period < 1000) {
+        return;
+    }
+
+    /* Update ticks and save valid capture time */
+    enc_total[index]++;
+    enc_status[index] = ENC_OK;
+    enc_last_capture[index] = captured;
+
+    if(period < ENC_SPEED_TIMEOUT)
     {
-        /* rad/s = (1 pulse / CPR) * 2π * (timer_freq / period) */
         float pulses_per_sec = (float)ENC_TIMER_FREQ_HZ / (float)period;
-        enc_speed_raw[index]     = pulses_per_sec * (6.28318f / 20.0f);
-        enc_speed_display[index] = enc_speed_raw[index];
+        float rad_per_sec    = pulses_per_sec * (6.28318f / 20.0f);
+
+        /* FIX 2: 16-Bit Timer Overflow Aliasing
+           A normal Roomba wheel maxes out at ~30 rad/s. If the math calculates
+           > 50 rad/s, the timer overflowed and tricked the math. Ignore it. */
+        if (rad_per_sec < 50.0f) {
+            enc_speed_raw[index]     = rad_per_sec;
+            enc_speed_display[index] = rad_per_sec;
+        }
     }
 }
 

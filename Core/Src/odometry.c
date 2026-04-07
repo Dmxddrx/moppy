@@ -136,13 +136,15 @@ void ODOM_UpdateEncoders(float v_left, float v_right, float yaw_deg, float dt)
     /* 2. Calculate distance traveled in this tick */
     float distance = s_speed * dt;
 
-    /* 3. Convert degrees to radians for math */
-    float yaw_rad = yaw_deg * DEG_TO_RAD;
+    /* IMPROVEMENT: Apply the Yaw Blend (formerly slam_lite) directly here */
+	#define YAW_BLEND 0.05f
+	s_pose.theta = (s_pose.theta * (1.0f - YAW_BLEND)) + (yaw_deg * YAW_BLEND);
+
+	float yaw_rad = s_pose.theta * DEG_TO_RAD;
 
     /* 4. Update Position (World Frame: X=East, Y=North) */
     s_pose.x += distance * sinf(yaw_rad);
     s_pose.y += distance * cosf(yaw_rad);
-    s_pose.theta = yaw_deg;
 
     /* 5. Clamp to map boundaries (30x30 meters) */
     if (s_pose.x < 0.0f)  s_pose.x = 0.0f;
