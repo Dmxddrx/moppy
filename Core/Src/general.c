@@ -18,6 +18,7 @@ static uint8_t  s_oled_page    = OLED_PAGE_MAP;
 static uint32_t s_last_oled_ms = 0;
 static uint32_t s_last_imu_ms  = 0;
 static uint32_t s_last_us_ms   = 0;
+static uint32_t s_last_btn_ms  = 0;
 static uint8_t  s_us_index     = 0;    /* which sensor to trigger next */
 
 /* CORRECTED: MPU6050_RawData instead of MPU6500 */
@@ -36,7 +37,20 @@ typedef enum {
     MODE_IDLE
 } RobotMode;
 
-static RobotMode s_robot_mode = MODE_WALL_FOLLOW; /* Start by tracing the walls */
+static RobotMode s_robot_mode = MODE_COVERAGE; /* Start by tracing the walls */
+
+/* ADD THIS NEW AVOIDANCE STATE MACHINE */
+typedef enum {
+    AVOID_FORWARD,
+    AVOID_TURN_LEFT,
+    AVOID_TURN_RIGHT
+} AvoidState;
+
+static AvoidState s_avoid_state = AVOID_FORWARD;
+
+/* Variables to share motor speeds with the OLED display */
+static int s_disp_l_pwm = 0;
+static int s_disp_r_pwm = 0;
 
 /* ═══════════════════════════════════════════════════════════════ */
 /* OLED MAP PAGE renderer                                         */
@@ -226,6 +240,35 @@ static void render_position_page(void)
 }
 
 /* ═══════════════════════════════════════════════════════════════ */
+/* OLED DIRECTION PAGE (New Page 2)                               */
+/* ═══════════════════════════════════════════════════════════════ */
+static void render_direction_page(void)
+{
+    OLED_Clear();
+    OLED_Print(0, 0, "-- Motor Status --");
+
+    char buf[32];
+    snprintf(buf, sizeof(buf), "L PWM: %d", s_disp_l_pwm);
+    OLED_Print(0, 16, buf);
+
+    snprintf(buf, sizeof(buf), "R PWM: %d", s_disp_r_pwm);
+    OLED_Print(0, 26, buf);
+
+    /* Determine the driving state based on PWM signs */
+    const char* state_str = "STOPPED";
+
+    if (s_disp_l_pwm > 0 && s_disp_r_pwm > 0)      state_str = "FORWARD";
+    else if (s_disp_l_pwm < 0 && s_disp_r_pwm < 0) state_str = "BACKWARD";
+    else if (s_disp_l_pwm < 0 && s_disp_r_pwm > 0) state_str = "ROTATING LEFT";
+    else if (s_disp_l_pwm > 0 && s_disp_r_pwm < 0) state_str = "ROTATING RIGHT";
+
+    OLED_Print(0, 44, "Action:");
+    OLED_Print(0, 54, state_str);
+
+    OLED_Update();
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
 /* GENERAL_Init                                                   */
 /* ═══════════════════════════════════════════════════════════════ */
 void GENERAL_Init(void)
@@ -277,6 +320,18 @@ void GENERAL_Init(void)
 	MOTORPWM_Init();      /* Initializes the PWM variables */
 	MOTOR_WakeAll();      /* WAKES UP THE MOTOR DRIVERS! */
 
+	/* --- TEMPORARY MOTOR DIRECTION TEST --- */
+	    /* Force both motors FORWARD at 50% speed for 5 seconds */
+	    MOTOR_Set(0, MOTOR_FORWARD, 300); /* Motor 1 (Left) */
+	    MOTOR_Set(1, MOTOR_FORWARD, 300); /* Motor 2 (Right) */
+
+	    HAL_Delay(3000);
+
+	    /* Stop motors before entering the main loop */
+	    MOTOR_Set(0, 0, 0);
+	    MOTOR_Set(1, 0, 0);
+	    /* -------------------------------------- */
+
 	/* ADD THESE LINES TO FIX THE 30m TELEPORT BUG: */
 	/* 1. Clear any fake encoder noise that happened during boot */
 	ENCODER_Reset(0);
@@ -298,87 +353,128 @@ void GENERAL_Update(void)
     /* ── Buttons ─────────────────────────────────────────────── */
     BTNS_Update();
     if (BTNS_Get_OLEDPage() == BTN_PRESSED) {
-        /* Change OLED Page */
-        s_oled_page = (s_oled_page + 1) % OLED_NUM_PAGES;
-
-        /* Optional: Also use this button to force switch to Coverage mode
-           once you are happy with the perimeter map */
-        if (s_robot_mode == MODE_WALL_FOLLOW) {
-            s_robot_mode = MODE_COVERAGE;
+            /* Only allow a page change if 500ms have passed since the last one */
+            if ((now - s_last_btn_ms) > 500) {
+                s_oled_page = (s_oled_page + 1) % OLED_NUM_PAGES;
+                s_last_btn_ms = now; /* Reset the cooldown timer */
+            }
         }
-    }
 
     /* ── Autonomous Loop (10 ms period = 100 Hz) ───────────── */
     if ((now - s_last_imu_ms) >= IMU_UPDATE_INTERVAL_MS) {
         float dt = (float)(now - s_last_imu_ms) * 0.001f;
         s_last_imu_ms = now;
 
-        /* 1. Read IMU & Fused Yaw */
+        /* 1. Read IMU (Kept active ONLY for the OLED Display!) */
         if (s_mpu_ok) MPU6050_ReadRaw(&s_imu_raw);
         if (s_hmc_ok) HMC5883L_ReadRaw(&s_mag_raw);
         STABLE_Update(&s_imu_raw, &s_mag_raw, dt);
         s_orient = STABLE_GetOrientation();
 
-        /* 2. Read Encoders (rad/s) and convert to m/s
-              Radius = 0.065m / 2 = 0.0325m */
+        /* 2. Read Encoders and convert to m/s */
         float v_left  = ENCODER_GetSpeed(0) * 0.0325f;
         float v_right = ENCODER_GetSpeed(1) * 0.0325f;
 
-        /* Apply sign based on motor direction so reversing works */
         if (MOTOR_GetDirection(0) < 0) v_left  = -v_left;
         if (MOTOR_GetDirection(1) < 0) v_right = -v_right;
 
-        /* 3. Update Map Position */
+        /* 3. Update Odometry Position (For OLED) */
         ODOM_UpdateEncoders(v_left, v_right, s_orient.yaw, dt);
         s_pose = ODOM_GetPose();
-        Map_UpdateRobotPose(&g_map, s_pose.x, s_pose.y, s_pose.theta);
 
-        /* 4. Read Sensors for the Brain */
-        float front_dist = ULTRASONIC_GetDistance(0); /* Front Sensor */
-        float right_dist = ULTRASONIC_GetDistance(1); /* Right Sensor */
+        /* 4. Read 4 Ultrasonic Sensors */
+                float dist_F = ULTRASONIC_GetDistance(0); /* SR1: Front */
+                float dist_R = ULTRASONIC_GetDistance(1); /* SR2: Right */
+                float dist_L = ULTRASONIC_GetDistance(3); /* SR4: Left  */
 
-        /* Trigger a turn/avoidance if front sensor sees a wall under 25cm */
-        int obstacle = (front_dist > 0.05f && front_dist < 0.25f) ? 1 : 0;
+                /* Step 4a: Check RAW sensor data (1cm to 30cm) */
+                int raw_obs_F = (dist_F > 0.01f && dist_F < 0.30f) ? 1 : 0;
+                int obs_R     = (dist_R > 0.01f && dist_R < 0.30f) ? 1 : 0;
+                int obs_L     = (dist_L > 0.01f && dist_L < 0.30f) ? 1 : 0;
+
+                /* Step 4b: DEBOUNCE FILTER FOR SR1 (FRONT) */
+                static int f_block_count = 0;
+                int obs_F = 0; /* This is the final confirmed obstacle state */
+
+                if (raw_obs_F == 1) {
+                    f_block_count++;
+
+                    /* 30 ticks * 10ms = 300ms (Exactly 3 continuous sensor updates!) */
+                    if (f_block_count >= 30) {
+                        obs_F = 1;              /* The wall is real! */
+                        f_block_count = 30;     /* Cap the counter so it doesn't overflow */
+                    }
+                } else {
+                    /* If the sensor suddenly sees a clear path, instantly reset */
+                    f_block_count = 0;
+                    obs_F = 0;
+                }
 
         int left_pwm = 0;
         int right_pwm = 0;
 
-        /* 5. Master State Machine (Wall Follow vs Coverage) */
-        if (s_robot_mode == MODE_WALL_FOLLOW)
+        /* 5. Master State Machine */
+        if (s_robot_mode == MODE_COVERAGE)
         {
-            /* Goal: Follow the right-side wall at exactly 15cm distance */
-            if (obstacle) {
-                /* Corner detected ahead! Turn left sharply to avoid crashing */
+            if (s_avoid_state == AVOID_FORWARD)
+            {
+                if (obs_F) {
+                    /* Front is blocked! Decide which way to turn */
+                    if (obs_L && !obs_R) {
+                        /* Front & Left blocked -> Turn Right */
+                        s_avoid_state = AVOID_TURN_RIGHT;
+                    } else {
+                        /* Front & Right blocked (or only Front) -> Turn Left */
+                        s_avoid_state = AVOID_TURN_LEFT;
+                    }
+                } else {
+                    /* Front is clear. Drive straight using Encoders! */
+                    int base_speed = 300;
+
+                    /* Calculate error: If left is spinning faster than right, err is positive */
+                    //float speed_error = v_left - v_right;
+
+                    /* Proportional Controller: Adjust PWM to equalize wheel speeds */
+                    //int correction = (int)(speed_error * 1000.0f);
+
+                    left_pwm  = base_speed; //- correction;
+                    right_pwm = base_speed; //+ correction;
+                }
+            }
+            else if (s_avoid_state == AVOID_TURN_LEFT)
+            {
+                /* Rotate in place */
                 left_pwm  = -250;
                 right_pwm =  250;
-            } else if (right_dist > 0.05f && right_dist < 1.0f) {
-                /* Right wall is visible, engage PID wall follower */
-                WALLFOLLOW_Update(right_dist, 0.15f, 300, &left_pwm, &right_pwm);
-            } else {
-                /* Lost the right wall (e.g. at an outer corner), gently curve right to find it */
-                left_pwm  = 800;
-                right_pwm = 800;
+
+                /* Keep turning until SR1 (Front) is clear */
+                if (!obs_F) {
+                    s_avoid_state = AVOID_FORWARD;
+                }
+            }
+            else if (s_avoid_state == AVOID_TURN_RIGHT)
+            {
+                /* Rotate in place */
+                left_pwm  =  250;
+                right_pwm = -250;
+
+                /* Keep turning until SR1 (Front) is clear */
+                if (!obs_F) {
+                    s_avoid_state = AVOID_FORWARD;
+                }
             }
         }
-        else if (s_robot_mode == MODE_COVERAGE)
-        {
-            /* Goal: Snake pattern across the room */
-            float target_heading = 0.0f;
-            int target_speed = 0;
 
-            COVERAGE_Update(s_pose, s_orient.yaw, obstacle, &target_heading, &target_speed);
-
-            /* Motion Steering: Calculate left/right PWM to hold heading */
-            MOTION_DriveStraight(target_heading, s_orient.yaw, target_speed, dt, &left_pwm, &right_pwm);
-        }
-
-        /* 6. Drive Physical Motors 1 and 2
-              Convert signed PWM into absolute speed and forward/backward direction */
+        /* 6. Drive Physical Motors */
         uint8_t left_dir  = (left_pwm >= 0)  ? MOTOR_FORWARD : MOTOR_BACKWARD;
         uint8_t right_dir = (right_pwm >= 0) ? MOTOR_FORWARD : MOTOR_BACKWARD;
 
         MOTOR_Set(0, left_dir,  abs(left_pwm));
         MOTOR_Set(1, right_dir, abs(right_pwm));
+
+        /* Save for OLED Page 2 */
+        s_disp_l_pwm = left_pwm;
+        s_disp_r_pwm = right_pwm;
     }
 
     /* ── Ultrasonic round-robin (25 ms per sensor) ───────────── */
@@ -386,19 +482,14 @@ void GENERAL_Update(void)
         s_last_us_ms = now;
         ULTRASONIC_CheckTimeout();
 
-        /* Read the sensor that was triggered last period          */
-        uint8_t read_idx = (s_us_index + 3) % 4;   /* previous index */
+        uint8_t read_idx = (s_us_index + 3) % 4;
         float dist = ULTRASONIC_GetDistance(read_idx);
 
-        static const float sensor_angles[4] = {
-            US_ANGLE_0, US_ANGLE_1, US_ANGLE_2, US_ANGLE_3
-        };
-
-        if (dist > 0.05f) {   /* > 5 cm = plausible reading       */
+        /* Mapping disabled for now
+        if (dist > 0.05f) {
             Map_UpdateUltrasonic(&g_map, dist, sensor_angles[read_idx]);
-        }
+        } */
 
-        /* Trigger the next sensor                                 */
         ULTRASONIC_Trigger(s_us_index);
         s_us_index = (s_us_index + 1) % 4;
     }
@@ -425,12 +516,13 @@ void GENERAL_ResetPose(void)
 #if ENABLE_OLED_DEBUG
 void GENERAL_OLED_Debug(void)
 {
-    switch (s_oled_page) {
-        case OLED_PAGE_MAP:        render_map_page();        break;
-        case OLED_PAGE_ULTRASONIC: render_ultrasonic_page(); break;
-        case OLED_PAGE_IMU:        render_imu_page();        break;
-        case OLED_PAGE_POSITION:   render_position_page();   break;
-        default:                   render_map_page();        break;
+	switch (s_oled_page) {
+		case 0:  render_map_page();        break; /* Page 1 */
+		case 1:  render_direction_page();  break; /* Page 2: NEW DIRECTION PAGE! */
+		case 2:  render_ultrasonic_page(); break; /* Page 3 */
+		case 3:  render_imu_page();        break; /* Page 4 */
+		case 4:  render_position_page();   break; /* Page 5 */
+		default: render_map_page();        break;
     }
 }
 #endif

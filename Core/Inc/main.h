@@ -71,14 +71,6 @@ void Error_Handler(void);
 #define M1_AIN1_GPIO_Port GPIOC
 #define BTN_OLED_PAGE_Pin GPIO_PIN_2
 #define BTN_OLED_PAGE_GPIO_Port GPIOC
-#define SR04_ECHO1_Pin GPIO_PIN_0
-#define SR04_ECHO1_GPIO_Port GPIOA
-#define SR04_ECHO2_Pin GPIO_PIN_1
-#define SR04_ECHO2_GPIO_Port GPIOA
-#define SR04_ECHO3_Pin GPIO_PIN_2
-#define SR04_ECHO3_GPIO_Port GPIOA
-#define SR04_ECHO4_Pin GPIO_PIN_3
-#define SR04_ECHO4_GPIO_Port GPIOA
 #define M1_PWM_Pin GPIO_PIN_6
 #define M1_PWM_GPIO_Port GPIOA
 #define M2_PWM_Pin GPIO_PIN_7
@@ -97,8 +89,6 @@ void Error_Handler(void);
 #define TRIG3_GPIO_Port GPIOE
 #define ENC1_A_Pin GPIO_PIN_9
 #define ENC1_A_GPIO_Port GPIOE
-#define ENC1_B_Pin GPIO_PIN_11
-#define ENC1_B_GPIO_Port GPIOE
 #define OLED_SCL_Pin GPIO_PIN_10
 #define OLED_SCL_GPIO_Port GPIOB
 #define OLED_SDA_Pin GPIO_PIN_11
@@ -113,6 +103,8 @@ void Error_Handler(void);
 #define M5_PWM_GPIO_Port GPIOD
 #define M6_PWM_Pin GPIO_PIN_14
 #define M6_PWM_GPIO_Port GPIOD
+#define ENC2_A_Pin GPIO_PIN_6
+#define ENC2_A_GPIO_Port GPIOC
 #define M4_BIN1_Pin GPIO_PIN_8
 #define M4_BIN1_GPIO_Port GPIOC
 #define M4_BIN2_Pin GPIO_PIN_9
