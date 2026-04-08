@@ -1,4 +1,6 @@
-Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
+Drivers/Middlewares/VL53L0X/vl53l0x.o: \
+ ../Drivers/Middlewares/VL53L0X/vl53l0x.c \
+ ../Drivers/Middlewares/VL53L0X/vl53l0x.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h \
  ../Core/Inc/stm32f4xx_hal_conf.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h \
@@ -29,16 +31,8 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_spi.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h \
- ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
- ../Core/Inc/general.h ../Core/Inc/mpu6050.h ../Core/Inc/main.h \
- ../Core/Inc/hmc5883l.h ../Core/Inc/encoder.h ../Core/Inc/motor.h \
- ../Core/Inc/motor_pwm.h ../Core/Inc/btns.h ../Core/Inc/oled.h \
- ../Core/Inc/odometry.h ../Core/Inc/mpu6050.h ../Core/Inc/mapping.h \
- ../Core/Inc/ir.h ../Core/Inc/stable.h \
- C:/Users/DMXHP/Documents/Programing_Files_IoT/STM32CubeIDE/workspace_2.0.0/STM32F407VET6/Moppy/Drivers/Middlewares/SSD1306/fonts.h \
- ../Core/Inc/coverage.h ../Core/Inc/motion.h ../Core/Inc/pid.h \
- ../Core/Inc/wall_follow.h ../Core/Inc/lidar.h
-../Core/Inc/main.h:
+ ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h
+../Drivers/Middlewares/VL53L0X/vl53l0x.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_rcc.h:
@@ -70,23 +64,3 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h:
-../Core/Inc/general.h:
-../Core/Inc/mpu6050.h:
-../Core/Inc/main.h:
-../Core/Inc/hmc5883l.h:
-../Core/Inc/encoder.h:
-../Core/Inc/motor.h:
-../Core/Inc/motor_pwm.h:
-../Core/Inc/btns.h:
-../Core/Inc/oled.h:
-../Core/Inc/odometry.h:
-../Core/Inc/mpu6050.h:
-../Core/Inc/mapping.h:
-../Core/Inc/ir.h:
-../Core/Inc/stable.h:
-C:/Users/DMXHP/Documents/Programing_Files_IoT/STM32CubeIDE/workspace_2.0.0/STM32F407VET6/Moppy/Drivers/Middlewares/SSD1306/fonts.h:
-../Core/Inc/coverage.h:
-../Core/Inc/motion.h:
-../Core/Inc/pid.h:
-../Core/Inc/wall_follow.h:
-../Core/Inc/lidar.h:

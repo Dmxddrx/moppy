@@ -5,26 +5,23 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-../Drivers/Middlewares/SSD1306/fonts.c \
-../Drivers/Middlewares/SSD1306/ssd1306.c 
+../Drivers/Middlewares/VL53L0X/vl53l0x.c 
 
 OBJS += \
-./Drivers/Middlewares/SSD1306/fonts.o \
-./Drivers/Middlewares/SSD1306/ssd1306.o 
+./Drivers/Middlewares/VL53L0X/vl53l0x.o 
 
 C_DEPS += \
-./Drivers/Middlewares/SSD1306/fonts.d \
-./Drivers/Middlewares/SSD1306/ssd1306.d 
+./Drivers/Middlewares/VL53L0X/vl53l0x.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes
-Drivers/Middlewares/SSD1306/%.o Drivers/Middlewares/SSD1306/%.su Drivers/Middlewares/SSD1306/%.cyclo: ../Drivers/Middlewares/SSD1306/%.c Drivers/Middlewares/SSD1306/subdir.mk
+Drivers/Middlewares/VL53L0X/%.o Drivers/Middlewares/VL53L0X/%.su Drivers/Middlewares/VL53L0X/%.cyclo: ../Drivers/Middlewares/VL53L0X/%.c Drivers/Middlewares/VL53L0X/subdir.mk
 	arm-none-eabi-gcc "$<" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32F407xx -c -I../Core/Inc -I"C:/Users/DMXHP/Documents/Programing_Files_IoT/STM32CubeIDE/workspace_2.0.0/STM32F407VET6/Moppy/Drivers/Middlewares/VL53L0X" -I"C:/Users/DMXHP/Documents/Programing_Files_IoT/STM32CubeIDE/workspace_2.0.0/STM32F407VET6/Moppy/Drivers/Middlewares/SSD1306" -I../Drivers/STM32F4xx_HAL_Driver/Inc -I../Drivers/STM32F4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32F4xx/Include -I../Drivers/CMSIS/Include -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"$(@:%.o=%.d)" -MT"$@" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "$@"
 
-clean: clean-Drivers-2f-Middlewares-2f-SSD1306
+clean: clean-Drivers-2f-Middlewares-2f-VL53L0X
 
-clean-Drivers-2f-Middlewares-2f-SSD1306:
-	-$(RM) ./Drivers/Middlewares/SSD1306/fonts.cyclo ./Drivers/Middlewares/SSD1306/fonts.d ./Drivers/Middlewares/SSD1306/fonts.o ./Drivers/Middlewares/SSD1306/fonts.su ./Drivers/Middlewares/SSD1306/ssd1306.cyclo ./Drivers/Middlewares/SSD1306/ssd1306.d ./Drivers/Middlewares/SSD1306/ssd1306.o ./Drivers/Middlewares/SSD1306/ssd1306.su
+clean-Drivers-2f-Middlewares-2f-VL53L0X:
+	-$(RM) ./Drivers/Middlewares/VL53L0X/vl53l0x.cyclo ./Drivers/Middlewares/VL53L0X/vl53l0x.d ./Drivers/Middlewares/VL53L0X/vl53l0x.o ./Drivers/Middlewares/VL53L0X/vl53l0x.su
 
-.PHONY: clean-Drivers-2f-Middlewares-2f-SSD1306
+.PHONY: clean-Drivers-2f-Middlewares-2f-VL53L0X
 

@@ -1,0 +1,7 @@
+../Drivers/Middlewares/VL53L0X/vl53l0x.c:4:13:writeReg	32	static
+../Drivers/Middlewares/VL53L0X/vl53l0x.c:7:13:writeReg16Bit	40	static
+../Drivers/Middlewares/VL53L0X/vl53l0x.c:11:16:readReg	40	static
+../Drivers/Middlewares/VL53L0X/vl53l0x.c:16:17:readReg16Bit	40	static
+../Drivers/Middlewares/VL53L0X/vl53l0x.c:23:6:VL53L0X_SetAddress	16	static
+../Drivers/Middlewares/VL53L0X/vl53l0x.c:28:9:VL53L0X_Init	24	static
+../Drivers/Middlewares/VL53L0X/vl53l0x.c:85:10:VL53L0X_ReadDistance	24	static

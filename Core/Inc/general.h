@@ -16,6 +16,7 @@
 #include "coverage.h"
 #include "motion.h"
 #include "wall_follow.h"
+#include "lidar.h"
 
 /* ── Feature switches ───────────────────────────────────────────*/
 #define ENABLE_OLED_SELFTEST   0

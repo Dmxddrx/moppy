@@ -25,5 +25,6 @@ SUBDIRS := \
 Core/Src \
 Core/Startup \
 Drivers/Middlewares/SSD1306 \
+Drivers/Middlewares/VL53L0X \
 Drivers/STM32F4xx_HAL_Driver/Src \
 

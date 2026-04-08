@@ -22,7 +22,6 @@
 #include "stm32f4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "ultrasonic.h"
 #include "encoder.h"
 /* USER CODE END Includes */
 
@@ -292,20 +291,9 @@ void DMA2_Stream7_IRQHandler(void)
 /* USER CODE BEGIN 1 */
 void HAL_TIM_IC_CaptureCallback(TIM_HandleTypeDef *htim)
 {
-    /* 1. Handle Ultrasonic Sensors (TIM2) */
-    if(htim->Instance == TIM2)
-    {
-        if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
-            ULTRASONIC_CaptureCallback(0);  /* Sensor 0: Front */
-        else if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_2)
-            ULTRASONIC_CaptureCallback(1);  /* Sensor 1: Right */
-        else if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_3)
-            ULTRASONIC_CaptureCallback(2);  /* Sensor 2: Back */
-        else if(htim->Channel == HAL_TIM_ACTIVE_CHANNEL_4)
-            ULTRASONIC_CaptureCallback(3);  /* Sensor 3: Left */
-    }
-    /* 2. ADD THIS: Handle Encoders (TIM1 and TIM8) */
-    else if(htim->Instance == TIM1 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
+    /* Handle Encoders (TIM1 and TIM8) */
+    /* REMOVED the old TIM2 Ultrasonic code entirely! */
+    if(htim->Instance == TIM1 && htim->Channel == HAL_TIM_ACTIVE_CHANNEL_1)
     {
         ENCODER_IC_Callback(0, HAL_TIM_ReadCapturedValue(htim, TIM_CHANNEL_1));
     }

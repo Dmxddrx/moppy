@@ -1,2 +1,2 @@
 ../Core/Src/lidar.c:24:6:LIDAR_Init	16	static
-../Core/Src/lidar.c:55:7:LIDAR_GetDistance	24	static
+../Core/Src/lidar.c:52:7:LIDAR_GetDistance	24	static
