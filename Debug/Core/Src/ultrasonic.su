@@ -1,5 +1,0 @@
-../Core/Src/ultrasonic.c:22:6:ULTRASONIC_Init	16	static
-../Core/Src/ultrasonic.c:51:6:ULTRASONIC_Trigger	32	static,ignoring_inline_asm
-../Core/Src/ultrasonic.c:77:6:ULTRASONIC_CaptureCallback	24	static
-../Core/Src/ultrasonic.c:131:6:ULTRASONIC_CheckTimeout	16	static
-../Core/Src/ultrasonic.c:147:7:ULTRASONIC_GetDistance	16	static

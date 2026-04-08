@@ -4,7 +4,6 @@
 #include "mpu6050.h"
 #include "main.h"
 #include "hmc5883l.h"
-#include "ultrasonic.h"
 #include "encoder.h"
 #include "motor.h"
 #include "btns.h"
