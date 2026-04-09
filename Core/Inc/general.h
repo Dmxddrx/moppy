@@ -19,7 +19,6 @@
 #include "lidar.h"
 
 /* ── Feature switches ───────────────────────────────────────────*/
-#define ENABLE_OLED_SELFTEST   0
 #define ENABLE_OLED_DEBUG      1
 
 /* ── OLED pages ─────────────────────────────────────────────────
@@ -51,6 +50,8 @@ void GENERAL_Update(void);
 
 /* Long-press button resets position to map centre                */
 void GENERAL_ResetPose(void);
+
+void GENERAL_I2C_Scan(void);
 
 #if ENABLE_OLED_SELFTEST
 void GENERAL_OLED_SelfTest(void);
