@@ -1,4 +1,4 @@
-../Core/Src/general.c:40:13:format_dist_mm	16	static
-../Core/Src/general.c:57:13:render_dashboard_page	88	static
-../Core/Src/general.c:101:6:GENERAL_Init	8	static
-../Core/Src/general.c:126:6:GENERAL_Update	56	static
+../Core/Src/general.c:45:13:format_dist_mm	16	static
+../Core/Src/general.c:59:13:render_dashboard_page	88	static
+../Core/Src/general.c:99:6:GENERAL_Init	8	static
+../Core/Src/general.c:124:6:GENERAL_Update	40	static
