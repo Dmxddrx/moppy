@@ -45,7 +45,7 @@ uint8_t VL53L0X_Init(VL53L0X_Dev *dev, I2C_HandleTypeDef *hi2c, uint8_t initial_
     /* Disable MSRC and PRE_RANGE limit checks */
     writeReg(dev, 0x60, readReg(dev, 0x60) | 0x12);
 
-    /* --- ST Microelectronics Magic Tuning Settings --- */
+    /* --- ST Microelectronics Magic Tuning Settings ---
     writeReg(dev, 0xFF, 0x01); writeReg(dev, 0x00, 0x00); writeReg(dev, 0xFF, 0x00);
     writeReg(dev, 0x09, 0x00); writeReg(dev, 0x10, 0x00); writeReg(dev, 0x11, 0x00);
     writeReg(dev, 0x24, 0x01); writeReg(dev, 0x25, 0xFF); writeReg(dev, 0x75, 0x00);

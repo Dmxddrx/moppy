@@ -11,7 +11,8 @@
 #define LIDAR_ADDR_2 0x32  /* Back  */
 #define LIDAR_ADDR_3 0x33  /* Left  */
 
-void  LIDAR_Init(void);
-float LIDAR_GetDistance(uint8_t index);
+void     LIDAR_Init(void);
+static void LIDAR_RecoverSensor(uint8_t index);
+uint16_t LIDAR_GetFilteredDistance(uint8_t index);
 
 #endif /* LIDAR_H */
