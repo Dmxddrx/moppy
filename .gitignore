@@ -1,0 +1,6 @@
+Debug/
+.settings/
+STM32F407VETX_FLASH.ld
+STM32F407VETX_RAM.ld
+notes.txt
+Moppy.txt

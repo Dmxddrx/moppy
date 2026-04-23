@@ -1,7 +1,10 @@
 #include "stable.h"
-#include "hmc5883l.h"
 #include <math.h>
 
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846f
+#endif
 /* ── Tuning ─────────────────────────────────────────────────────
    ALPHA: weight given to gyro integration (0.95–0.98 is typical)
           higher → smoother but slower to correct gyro drift

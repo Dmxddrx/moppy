@@ -1,4 +1,6 @@
-../Core/Src/general.c:45:13:format_dist_mm	16	static
-../Core/Src/general.c:59:13:render_dashboard_page	88	static
-../Core/Src/general.c:99:6:GENERAL_Init	8	static
-../Core/Src/general.c:124:6:GENERAL_Update	40	static
+../Core/Src/general.c:50:14:wrap360	16	static
+../Core/Src/general.c:56:14:angle_diff	24	static
+../Core/Src/general.c:66:13:format_dist_mm	16	static
+../Core/Src/general.c:79:13:render_dashboard_page	128	static
+../Core/Src/general.c:126:6:GENERAL_Init	8	static
+../Core/Src/general.c:163:6:GENERAL_Update	120	static

@@ -5,6 +5,9 @@
 #include <math.h>
 #include <stdlib.h>
 
+/* ── Global Map Instance ───────────────────────────────────────*/
+Map g_map;
+
 /* ── I2C handles ─────────────────────────────────────────────── */
 extern I2C_HandleTypeDef hi2c1;
 extern I2C_HandleTypeDef hi2c2;
@@ -17,14 +20,17 @@ static uint32_t s_last_logic_ms  = 0;
 static uint32_t s_last_lidar_ms = 0;
 static uint8_t  s_lidar_idx     = 0;
 static uint16_t s_lidar_raw[4]  = {65535, 65535, 65535, 65535};
+static uint8_t  s_lidar_hits[4] = {0, 0, 0, 0};
 
-/* Smoothing Hit Counters to eliminate false positive stops! */
-static uint8_t s_lidar_hits[4]  = {0, 0, 0, 0};
+/* IMU Navigation State */
+static float s_current_yaw = 0.0f;
+static float s_target_yaw  = 0.0f;
+static int   s_is_moving   = 0; /* NEW: Tracks if the motors/LEDs are active */
 
-/* Simple State Machine for pure LiDAR navigation */
+/* Simple State Machine */
 typedef enum {
     AVOID_FORWARD,
-    AVOID_CONFIRMING, /* NEW: The 1-second evaluation pause! */
+    AVOID_CONFIRMING,
     AVOID_TURN_LEFT,
     AVOID_TURN_RIGHT,
     AVOID_BACKWARD,
@@ -32,18 +38,32 @@ typedef enum {
 } AvoidState;
 
 static AvoidState s_avoid_state = AVOID_FORWARD;
-static uint32_t s_turn_timer = 0;
-static uint32_t s_pause_timer = 0; /* NEW: Tracks the 1-second pause */
+static uint32_t s_pause_timer = 0;
 
 /* Variables to share motor speeds with the OLED display */
 static int s_disp_l_pwm = 0;
 static int s_disp_r_pwm = 0;
 
 /* ═══════════════════════════════════════════════════════════════ */
+/* HELPER: Angle Math for perfect 90-degree turns                  */
+/* ═══════════════════════════════════════════════════════════════ */
+static float wrap360(float a) {
+    while(a >= 360.0f) a -= 360.0f;
+    while(a <    0.0f) a += 360.0f;
+    return a;
+}
+
+static float angle_diff(float target, float current) {
+    float d = target - current;
+    while(d >  180.0f) d -= 360.0f;
+    while(d < -180.0f) d += 360.0f;
+    return d;
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
 /* HELPER: Filter out hardware errors and format the Millimeters!  */
 /* ═══════════════════════════════════════════════════════════════ */
-static void format_dist_mm(uint16_t raw_dist, char* out_str)
-{
+static void format_dist_mm(uint16_t raw_dist, char* out_str) {
     if (raw_dist == 65535) {
         strcpy(out_str, "NO  ");
     } else if (raw_dist >= 8190 || raw_dist == 0) {
@@ -54,12 +74,15 @@ static void format_dist_mm(uint16_t raw_dist, char* out_str)
 }
 
 /* ═══════════════════════════════════════════════════════════════ */
-/* UNIFIED DASHBOARD PAGE (Millimeters + Motors)                   */
+/* UNIFIED DASHBOARD PAGE                                          */
 /* ═══════════════════════════════════════════════════════════════ */
 static void render_dashboard_page(void)
 {
     char buf[32];
     char str_F[8], str_R[8], str_B[8], str_L[8];
+
+    /* Pull the calculated map coordinates to show on the screen */
+	RobotPose pose = ODOM_GetPose();
 
     OLED_Clear();
 
@@ -68,13 +91,17 @@ static void render_dashboard_page(void)
     format_dist_mm(s_lidar_raw[2], str_B);
     format_dist_mm(s_lidar_raw[3], str_L);
 
+    OLED_DrawOutline(0, 0, 100, 19);
+
     snprintf(buf, sizeof(buf), "F:%-5s  B:%-5s", str_F, str_B);
-    OLED_Print(0, 0, buf);
+    OLED_Print(2, 2, buf);
 
     snprintf(buf, sizeof(buf), "R:%-5s  L:%-5s", str_R, str_L);
-    OLED_Print(0, 12, buf);
+    OLED_Print(2, 11, buf);
 
-    OLED_Print(0, 24, "----------------");
+    /* SHOW THE 9-AXIS HEADING AND THE MAP COORDINATES! */
+	snprintf(buf, sizeof(buf), "H:%-3.0f X:%-4.1f Y:%-4.1f", s_current_yaw, pose.x, pose.y);
+	OLED_Print(0, 24, buf);
 
     snprintf(buf, sizeof(buf), "PWM L:%-4d R:%-4d", s_disp_l_pwm, s_disp_r_pwm);
     OLED_Print(0, 36, buf);
@@ -87,8 +114,8 @@ static void render_dashboard_page(void)
     else if (s_avoid_state == AVOID_TURN_RIGHT) state_str = "TURN RIGHT";
     else if (s_avoid_state == AVOID_STOP)       state_str = "EMERG STOP!";
 
-    OLED_Print(0, 50, "ACT: ");
-    OLED_Print(36, 50, state_str);
+    OLED_Print(0, 44, "ACT: ");
+    OLED_Print(36, 44, state_str);
 
     OLED_Update();
 }
@@ -101,8 +128,20 @@ void GENERAL_Init(void)
     OLED_Init(&hi2c2);
     OLED_Clear();
     OLED_Print(16, 20, "Floor Robot");
-    OLED_Print(20, 44, "Booting...");
+
+    /* IMPORTANT WARNING FOR THE USER ON THE SCREEN */
+    OLED_Print(0, 40, "DO NOT MOVE!");
+    OLED_Print(0, 50, "Calibrating IMU...");
     OLED_Update();
+
+    /* Boot up the IMU and Compass */
+    MPU6050_Init();
+    HMC5883L_Init();
+    STABLE_Init();
+
+    /* NEW: Initialize the map and odometry at (15.0m, 15.0m) */
+	ODOM_Init();
+	Map_Init(&g_map);
 
     LIDAR_Init();
     MOTOR_Init();
@@ -129,7 +168,17 @@ void GENERAL_Update(void)
     if ((now - s_last_logic_ms) >= 10) {
         s_last_logic_ms = now;
 
-        /* Evaluate Obstacles based on the SMOOTHED CONFIRMATION HITS! */
+        /* A. Read IMU and update real-time Orientation */
+        MPU6050_RawData imu;
+        HMC5883L_RawData mag;
+
+        if (MPU6050_ReadRaw(&imu) == HAL_OK) {
+            HMC5883L_ReadRaw(&mag);
+            STABLE_Update(&imu, &mag, 0.01f); /* 10ms = 0.01 seconds */
+            s_current_yaw = STABLE_GetOrientation().yaw;
+        }
+
+        /* B. Evaluate Obstacles */
         int obs_F = (s_lidar_hits[0] >= 2);
         int obs_R = (s_lidar_hits[1] >= 2);
         int obs_B = (s_lidar_hits[2] >= 2);
@@ -138,16 +187,14 @@ void GENERAL_Update(void)
         int left_pwm = 0;
         int right_pwm = 0;
 
-        /* MASTER LOGIC STATE MACHINE */
+        /* C. MASTER LOGIC STATE MACHINE */
         switch (s_avoid_state)
         {
             case AVOID_FORWARD:
                 if (obs_F) {
-                    /* Front is blocked! Hit the brakes and start the 1-second timer */
                     s_avoid_state = AVOID_CONFIRMING;
                     s_pause_timer = now;
                 } else {
-                    /* Front is clear. Drive straight! */
                     left_pwm  = 300;
                     right_pwm = 300;
                 }
@@ -157,23 +204,21 @@ void GENERAL_Update(void)
                 left_pwm  = 0;
                 right_pwm = 0;
 
-                /* Wait exactly 1000ms (1 second) before making a decision */
                 if (now - s_pause_timer >= 1000) {
                     if (obs_F) {
-                        /* The obstacle is STILL there. It's a permanent wall! Turn! */
+                        /* Calculate EXACT 90-degree targets based on current heading! */
                         if (!obs_R) {
                             s_avoid_state = AVOID_TURN_RIGHT;
-                            s_turn_timer = now;
+                            s_target_yaw = wrap360(s_current_yaw + 90.0f);
                         } else if (!obs_L) {
                             s_avoid_state = AVOID_TURN_LEFT;
-                            s_turn_timer = now;
+                            s_target_yaw = wrap360(s_current_yaw - 90.0f);
                         } else if (!obs_B) {
                             s_avoid_state = AVOID_BACKWARD;
                         } else {
                             s_avoid_state = AVOID_STOP;
                         }
                     } else {
-                        /* The obstacle moved! (e.g. a person walked away) Resume driving! */
                         s_avoid_state = AVOID_FORWARD;
                     }
                 }
@@ -182,13 +227,18 @@ void GENERAL_Update(void)
             case AVOID_TURN_RIGHT:
                 left_pwm  =  350;
                 right_pwm = -350;
-                if (now - s_turn_timer >= 1000) s_avoid_state = AVOID_FORWARD;
+                /* Stop turning when we are within 5 degrees of the 90-deg target */
+                if (fabsf(angle_diff(s_target_yaw, s_current_yaw)) < 5.0f) {
+                    s_avoid_state = AVOID_FORWARD;
+                }
                 break;
 
             case AVOID_TURN_LEFT:
                 left_pwm  = -350;
                 right_pwm =  350;
-                if (now - s_turn_timer >= 1000) s_avoid_state = AVOID_FORWARD;
+                if (fabsf(angle_diff(s_target_yaw, s_current_yaw)) < 5.0f) {
+                    s_avoid_state = AVOID_FORWARD;
+                }
                 break;
 
             case AVOID_BACKWARD:
@@ -196,13 +246,13 @@ void GENERAL_Update(void)
                 right_pwm = -300;
                 if (!obs_R && !obs_L) {
                     s_avoid_state = AVOID_TURN_RIGHT;
-                    s_turn_timer = now;
+                    s_target_yaw = wrap360(s_current_yaw + 90.0f);
                 } else if (!obs_R) {
                     s_avoid_state = AVOID_TURN_RIGHT;
-                    s_turn_timer = now;
+                    s_target_yaw = wrap360(s_current_yaw + 90.0f);
                 } else if (!obs_L) {
                     s_avoid_state = AVOID_TURN_LEFT;
-                    s_turn_timer = now;
+                    s_target_yaw = wrap360(s_current_yaw - 90.0f);
                 } else if (obs_B) {
                     s_avoid_state = AVOID_STOP;
                 }
@@ -215,7 +265,6 @@ void GENERAL_Update(void)
                 break;
         }
 
-        /* Drive Physical Motors */
         uint8_t left_dir  = (left_pwm >= 0)  ? MOTOR_FORWARD : MOTOR_BACKWARD;
         uint8_t right_dir = (right_pwm >= 0) ? MOTOR_FORWARD : MOTOR_BACKWARD;
 
@@ -224,28 +273,71 @@ void GENERAL_Update(void)
 
         s_disp_l_pwm = left_pwm;
         s_disp_r_pwm = right_pwm;
+
+        /* D. ODOMETRY & MAPPING (The Kinematic Simulator) */
+		s_is_moving = (left_pwm != 0 || right_pwm != 0);
+
+		if (s_is_moving) {
+			/* 1. Ask stable.c for the exact slope of the floor */
+			Orientation current_3d = STABLE_GetOrientation();
+			float pitch_deg = current_3d.pitch;
+
+			/* 2. Base simulated speed on flat ground (0.4 m/s max) */
+			float sim_v_left  = (left_pwm  / 999.0f) * 0.4f;
+			float sim_v_right = (right_pwm / 999.0f) * 0.4f;
+
+			/* 3. Apply the Hill Physics! */
+			/* If pitch > 0 (uphill), sine is positive, speed drops.
+			   If pitch < 0 (downhill), sine is negative, speed increases! */
+			float gravity_pull = sinf(pitch_deg * (M_PI / 180.0f)) * 0.15f;
+
+			sim_v_left  -= gravity_pull;
+			sim_v_right -= gravity_pull;
+
+			/* 4. Motor Stall Protection (Clamps) */
+			/* Don't slide backward when trying to drive forward */
+			if (left_pwm > 0 && sim_v_left < 0.0f) sim_v_left = 0.0f;
+			if (right_pwm > 0 && sim_v_right < 0.0f) sim_v_right = 0.0f;
+
+			/* Don't slide forward when trying to reverse up a steep hill */
+			if (left_pwm < 0 && sim_v_left > 0.0f) sim_v_left = 0.0f;
+			if (right_pwm < 0 && sim_v_right > 0.0f) sim_v_right = 0.0f;
+
+			/* Fuse the slope-adjusted speed with the tilt-compensated compass! */
+			ODOM_UpdateEncoders(sim_v_left, sim_v_right, current_3d.yaw, 0.01f);
+
+			RobotPose pose = ODOM_GetPose();
+			Map_UpdateRobotPose(&g_map, pose.x, pose.y, pose.theta);
+		}
     }
 
-    /* ── 2. LiDAR round-robin (Read one sensor every 35 ms) ──── */
-    if ((now - s_last_lidar_ms) >= 35) {
-        s_last_lidar_ms = now;
+    /* ── 2. LiDAR round-robin ──── */
+	if ((now - s_last_lidar_ms) >= 35) {
+		s_last_lidar_ms = now;
+		uint16_t dist = LIDAR_GetFilteredDistance(s_lidar_idx);
+		s_lidar_raw[s_lidar_idx] = dist;
 
-        uint16_t dist = LIDAR_GetFilteredDistance(s_lidar_idx);
-        s_lidar_raw[s_lidar_idx] = dist;
+		if (dist > 40 && dist <= 200) {
+			if (s_lidar_hits[s_lidar_idx] < 2) s_lidar_hits[s_lidar_idx]++;
+		} else {
+			s_lidar_hits[s_lidar_idx] = 0;
+		}
 
-        /* CONFIRMATION FILTER: Valid obstacle between 40mm and 200mm. */
-        if (dist > 40 && dist <= 200) {
-            if (s_lidar_hits[s_lidar_idx] < 2) {
-                s_lidar_hits[s_lidar_idx]++;
-            }
-        } else {
-            s_lidar_hits[s_lidar_idx] = 0;
-        }
+		/* Plot LiDAR Obstacles on the Map ONLY if the robot is moving! */
+		if (s_is_moving && dist > 40 && dist < 3500) {
+			float angle = 0.0f;
+			if(s_lidar_idx == 0) angle = 0.0f;   /* Front */
+			if(s_lidar_idx == 1) angle = 90.0f;  /* Right */
+			if(s_lidar_idx == 2) angle = 180.0f; /* Back  */
+			if(s_lidar_idx == 3) angle = 270.0f; /* Left  */
 
-        s_lidar_idx = (s_lidar_idx + 1) % 4;
-    }
+			Map_UpdateUltrasonic(&g_map, dist / 1000.0f, angle);
+		}
 
-    /* ── 3. OLED refresh (200 ms = 5 Hz) ─────────────────────── */
+		s_lidar_idx = (s_lidar_idx + 1) % 4;
+	}
+
+    /* ── 3. OLED refresh ─────────────────────── */
     if ((now - s_last_oled_ms) >= 200) {
         s_last_oled_ms = now;
         render_dashboard_page();
