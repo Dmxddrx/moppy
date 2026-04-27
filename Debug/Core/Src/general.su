@@ -1,7 +1,6 @@
-../Core/Src/general.c:56:14:wrap360	16	static
-../Core/Src/general.c:62:14:angle_diff	24	static
-../Core/Src/general.c:72:13:format_dist_mm	16	static
-../Core/Src/general.c:85:13:render_dashboard_page	128	static
-../Core/Src/general.c:132:13:render_compass_page	88	static
-../Core/Src/general.c:183:6:GENERAL_Init	8	static
-../Core/Src/general.c:221:6:GENERAL_Update	120	static
+../Core/Src/general.c:42:14:angle_diff	24	static
+../Core/Src/general.c:52:13:format_dist_mm	16	static
+../Core/Src/general.c:65:13:render_dashboard_page	136	static
+../Core/Src/general.c:115:13:render_compass_page	88	static
+../Core/Src/general.c:166:6:GENERAL_Init	8	static
+../Core/Src/general.c:204:6:GENERAL_Update	136	static

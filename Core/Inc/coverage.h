@@ -2,22 +2,21 @@
 #define COVERAGE_H
 
 #include "odometry.h"
+#include <stdint.h>
 
-typedef enum
-{
-    COVERAGE_IDLE,
-    COVERAGE_FORWARD,
-    COVERAGE_TURN_1,    /* First 90-degree turn */
-    COVERAGE_SHIFT,     /* Drive forward to the next row */
-    COVERAGE_TURN_2     /* Second 90-degree turn to face back */
-} CoverageState;
+/* The Commands the Captain can issue to the Driver (general.c) */
+typedef enum {
+    CMD_DRIVE_FORWARD,
+    CMD_TURN_LEFT,
+    CMD_TURN_RIGHT,
+    CMD_STOP
+} CoverageCmd;
 
 void COVERAGE_Init(void);
 
-void COVERAGE_Update(RobotPose pose,
-                     float     current_yaw,
-                     int       obstacle,
-                     float    *target_heading,
-                     int      *speed);
+/* * The Brain: Call this every 10ms.
+ * It evaluates the surroundings and tells the robot what to do next.
+ */
+CoverageCmd COVERAGE_Update(RobotPose pose, int obs_F, int obs_R, int obs_L, float* out_target_yaw);
 
-#endif
+#endif /* COVERAGE_H */

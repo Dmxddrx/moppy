@@ -1,20 +1,31 @@
 #include "coverage.h"
 #include <math.h>
-#include <stdlib.h>
 
-#define TURN_DONE_DEG    5.0f    /* tolerance to finish a turn */
-#define FORWARD_SPEED    400     /* Base PWM speed */
-#define SHIFT_DISTANCE_M 0.30f   /* Distance to shift to the next row (30cm) */
+/* The Lawnmower Sequence States */
+typedef enum {
+    LAWN_SWEEPING,
+    LAWN_PAUSE,
+    LAWN_TURN_1,
+    LAWN_STEPPING,
+    LAWN_TURN_2,
+    LAWN_STOPPED
+} LawnState;
 
-static CoverageState state;
-static float row_heading = 0.0f;
-static float turn_target = 0.0f;
-static int   direction   = 1;      /* +1 for Right turns, -1 for Left turns */
+static LawnState s_state = LAWN_SWEEPING;
+static int s_turn_dir = 1; /* 1 = Right U-Turn, -1 = Left U-Turn */
 
-/* Variables to track how far we have driven during the row shift */
-static float shift_start_x = 0.0f;
-static float shift_start_y = 0.0f;
+static float s_target_yaw = 0.0f;
 
+/* For tracking the precise 15cm (0.15m) step */
+static float s_step_start_x = 0.0f;
+static float s_step_start_y = 0.0f;
+
+/* Delay timer for smooth transitions */
+static uint32_t s_pause_ticks = 0;
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* HELPER MATH                                                     */
+/* ═══════════════════════════════════════════════════════════════ */
 static float wrap360(float a) {
     while(a >= 360.0f) a -= 360.0f;
     while(a <    0.0f) a += 360.0f;
@@ -28,78 +39,89 @@ static float angle_diff(float target, float current) {
     return d;
 }
 
+/* ═══════════════════════════════════════════════════════════════ */
+/* PUBLIC FUNCTIONS                                                */
+/* ═══════════════════════════════════════════════════════════════ */
 void COVERAGE_Init(void) {
-    row_heading = 0.0f;
-    turn_target = 0.0f;
-    direction   = 1;
-    state       = COVERAGE_FORWARD;
+    s_state = LAWN_SWEEPING;
+    s_turn_dir = 1; /* Start by turning right at the very first wall */
 }
 
-void COVERAGE_Update(RobotPose pose, float current_yaw, int obstacle, float *target_heading, int *speed)
-{
-    switch(state)
-    {
-        case COVERAGE_FORWARD:
-            *target_heading = row_heading;
-            *speed          = FORWARD_SPEED;
+/* Add this variable near the top with your other static variables */
+static float s_row_heading = 0.0f;
 
-            if(obstacle) {
-                /* Hit a wall! Calculate 90 deg turn */
-                turn_target = wrap360(row_heading + 90.0f * (float)direction);
-                state       = COVERAGE_TURN_1;
+CoverageCmd COVERAGE_Update(RobotPose pose, int obs_F, int obs_R, int obs_L, float* out_target_yaw) {
+    CoverageCmd cmd = CMD_DRIVE_FORWARD;
+
+    switch (s_state) {
+
+        case LAWN_SWEEPING:
+            *out_target_yaw = s_row_heading; /* IMU Heading Lock! */
+            if (obs_F) {
+                s_state = LAWN_PAUSE;
+                s_pause_ticks = 0;
+            } else {
+                cmd = CMD_DRIVE_FORWARD;
             }
             break;
 
-        case COVERAGE_TURN_1:
-            *target_heading = turn_target;
-            *speed          = 0; /* Turn in place */
-
-            if(fabsf(angle_diff(turn_target, current_yaw)) < TURN_DONE_DEG) {
-                shift_start_x = pose.x;
-                shift_start_y = pose.y;
-                row_heading   = turn_target;
-                state         = COVERAGE_SHIFT;
+        case LAWN_PAUSE:
+            cmd = CMD_STOP;
+            s_pause_ticks++;
+            if (s_pause_ticks > 50) {
+                s_state = LAWN_TURN_1;
+                s_target_yaw = wrap360(s_row_heading + 90.0f * (float)s_turn_dir);
             }
             break;
 
-        case COVERAGE_SHIFT:
-            *target_heading = row_heading;
-            *speed          = FORWARD_SPEED;
+        case LAWN_TURN_1:
+            cmd = (s_turn_dir == 1) ? CMD_TURN_RIGHT : CMD_TURN_LEFT;
+            *out_target_yaw = s_target_yaw;
 
-            float dx = pose.x - shift_start_x;
-            float dy = pose.y - shift_start_y;
-            float dist_moved = sqrtf(dx*dx + dy*dy);
-
-            if(obstacle) {
-                /* IMPROVEMENT: Abort shift if blocked!
-                   We hit a wall mid-shift. Force a 180-turn to escape the corner
-                   and immediately head back down the room. */
-                turn_target = wrap360(row_heading + 90.0f * (float)direction);
-                direction  *= -1; /* Flip direction early to escape */
-                state       = COVERAGE_TURN_2;
-            }
-            else if(dist_moved >= SHIFT_DISTANCE_M) {
-                /* Normal 30cm shift complete */
-                turn_target = wrap360(row_heading + 90.0f * (float)direction);
-                state       = COVERAGE_TURN_2;
+            if (fabsf(angle_diff(s_target_yaw, pose.theta)) < 5.0f) {
+                s_state = LAWN_STEPPING;
+                s_step_start_x = pose.x;
+                s_step_start_y = pose.y;
+                s_row_heading = s_target_yaw; /* Lock the new heading for the shift */
             }
             break;
 
-        case COVERAGE_TURN_2:
-            *target_heading = turn_target;
-            *speed          = 0;
+        case LAWN_STEPPING:
+            cmd = CMD_DRIVE_FORWARD;
+            *out_target_yaw = s_row_heading; /* IMU Heading Lock for the shift! */
 
-            if(fabsf(angle_diff(turn_target, current_yaw)) < TURN_DONE_DEG) {
-                row_heading = turn_target;
-                direction  *= -1; /* Normal snake flip */
-                state       = COVERAGE_FORWARD;
+            float dx = pose.x - s_step_start_x;
+            float dy = pose.y - s_step_start_y;
+            float dist = sqrtf(dx*dx + dy*dy);
+
+            if (obs_F) {
+                /* YOUR OLD CODE: The Mid-Shift Abort! */
+                s_state = LAWN_TURN_2;
+                s_target_yaw = wrap360(s_row_heading + 90.0f * (float)s_turn_dir);
+                s_turn_dir *= -1; /* Flip direction early to escape the corner */
+            }
+            else if (dist >= 0.15f) {
+                /* Normal 15cm shift complete */
+                s_state = LAWN_TURN_2;
+                s_target_yaw = wrap360(s_row_heading + 90.0f * (float)s_turn_dir);
             }
             break;
 
-        case COVERAGE_IDLE:
-        default:
-            *target_heading = row_heading;
-            *speed          = 0;
+        case LAWN_TURN_2:
+            cmd = (s_turn_dir == 1) ? CMD_TURN_RIGHT : CMD_TURN_LEFT;
+            *out_target_yaw = s_target_yaw;
+
+            if (fabsf(angle_diff(s_target_yaw, pose.theta)) < 5.0f) {
+                s_row_heading = s_target_yaw; /* Lock the new forward heading */
+                s_turn_dir *= -1; /* Normal snake flip */
+                s_state = LAWN_SWEEPING;
+            }
+            break;
+
+        case LAWN_STOPPED:
+            cmd = CMD_STOP;
             break;
     }
+
+    return cmd;
 }

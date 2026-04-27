@@ -1,4 +1,4 @@
-../Core/Src/coverage.c:18:14:wrap360	3
-../Core/Src/coverage.c:24:14:angle_diff	3
-../Core/Src/coverage.c:31:6:COVERAGE_Init	1
-../Core/Src/coverage.c:38:6:COVERAGE_Update	10
+../Core/Src/coverage.c:29:14:wrap360	3
+../Core/Src/coverage.c:35:14:angle_diff	3
+../Core/Src/coverage.c:45:6:COVERAGE_Init	1
+../Core/Src/coverage.c:53:13:COVERAGE_Update	15

@@ -32,32 +32,12 @@ static uint8_t  s_lidar_hits[4] = {0, 0, 0, 0};
 static float s_current_yaw = 0.0f;
 static float s_target_yaw  = 0.0f;
 static int   s_is_moving   = 0; /* NEW: Tracks if the motors/LEDs are active */
+static CoverageCmd s_current_cmd = CMD_STOP; /* The Captain's Orders! */
 
-/* Simple State Machine */
-typedef enum {
-    AVOID_FORWARD,
-    AVOID_CONFIRMING,
-    AVOID_TURN_LEFT,
-    AVOID_TURN_RIGHT,
-    AVOID_BACKWARD,
-    AVOID_STOP
-} AvoidState;
-
-static AvoidState s_avoid_state = AVOID_FORWARD;
-static uint32_t s_pause_timer = 0;
 
 /* Variables to share motor speeds with the OLED display */
 static int s_disp_l_pwm = 0;
 static int s_disp_r_pwm = 0;
-
-/* ═══════════════════════════════════════════════════════════════ */
-/* HELPER: Angle Math for perfect 90-degree turns                  */
-/* ═══════════════════════════════════════════════════════════════ */
-static float wrap360(float a) {
-    while(a >= 360.0f) a -= 360.0f;
-    while(a <    0.0f) a += 360.0f;
-    return a;
-}
 
 static float angle_diff(float target, float current) {
     float d = target - current;
@@ -107,21 +87,24 @@ static void render_dashboard_page(void)
 
     /* SHOW THE 9-AXIS HEADING AND THE MAP COORDINATES! */
 	snprintf(buf, sizeof(buf), "H:%-3.0f X:%-4.1f Y:%-4.1f", s_current_yaw, pose.x, pose.y);
-	OLED_Print(0, 24, buf);
+	OLED_Print(0, 23, buf);
 
     snprintf(buf, sizeof(buf), "PWM L:%-4d R:%-4d", s_disp_l_pwm, s_disp_r_pwm);
-    OLED_Print(0, 36, buf);
+    OLED_Print(0, 34, buf);
 
-    const char* state_str = "STOPPED";
-    if (s_avoid_state == AVOID_FORWARD)        state_str = "FORWARD";
-    else if (s_avoid_state == AVOID_CONFIRMING) state_str = "WAITING...";
-    else if (s_avoid_state == AVOID_BACKWARD)   state_str = "REVERSING";
-    else if (s_avoid_state == AVOID_TURN_LEFT)  state_str = "TURN LEFT";
-    else if (s_avoid_state == AVOID_TURN_RIGHT) state_str = "TURN RIGHT";
-    else if (s_avoid_state == AVOID_STOP)       state_str = "EMERG STOP!";
+    /* UPGRADED: Map the new Coverage Commands to display strings */
+        const char* state_str = "IDLE";
+        if (s_current_cmd == CMD_DRIVE_FORWARD)     state_str = "SWEEPING";
+        else if (s_current_cmd == CMD_TURN_LEFT)    state_str = "TURNING L";
+        else if (s_current_cmd == CMD_TURN_RIGHT)   state_str = "TURNING R";
+        else if (s_current_cmd == CMD_STOP)         state_str = "STOPPED";
 
-    OLED_Print(0, 45, "ACT: ");
-    OLED_Print(36, 45, state_str);
+    OLED_Print(0, 43, "ACT: ");
+    OLED_Print(36, 43, state_str);
+
+    float cleaned_area = g_map.cells_cleaned * 0.0225f;
+        snprintf(buf, sizeof(buf), "Area: %-5.2f m2", cleaned_area);
+        OLED_Print(0, 54, buf);
 
     OLED_Update();
 }
@@ -216,7 +199,7 @@ void GENERAL_Init(void)
 }
 
 /* ═══════════════════════════════════════════════════════════════ */
-/* GENERAL_Update — call from main() while(1) loop               */
+/* GENERAL_Update                                                 */
 /* ═══════════════════════════════════════════════════════════════ */
 void GENERAL_Update(void)
 {
@@ -229,17 +212,15 @@ void GENERAL_Update(void)
         /* A. Read Buttons for UI Changes! */
         BTNS_Update();
         if (BTNS_Get_OLEDPage() == BTN_PRESSED) {
-            /* Toggle between Page 0 and Page 1 */
             s_current_page = !s_current_page;
         }
 
-        /* B. Read IMU and update real-time Orientation */
+        /* B. Read IMU */
         MPU6050_RawData imu;
         HMC5883L_RawData mag;
-
         if (MPU6050_ReadRaw(&imu) == HAL_OK) {
             HMC5883L_ReadRaw(&mag);
-            STABLE_Update(&imu, &mag, 0.01f); /* 10ms = 0.01 seconds */
+            STABLE_Update(&imu, &mag, 0.01f);
             s_current_yaw = STABLE_GetOrientation().yaw;
         }
 
@@ -252,82 +233,47 @@ void GENERAL_Update(void)
         int left_pwm = 0;
         int right_pwm = 0;
 
-        /* D. MASTER LOGIC STATE MACHINE */
-        switch (s_avoid_state)
-        {
-            case AVOID_FORWARD:
-                if (obs_F) {
-                    s_avoid_state = AVOID_CONFIRMING;
-                    s_pause_timer = now;
-                } else {
-                    left_pwm  = 300;
-                    right_pwm = 300;
-                }
-                break;
+        /* D. MASTER LOGIC (The Captain & The Driver) */
+        RobotPose pose = ODOM_GetPose();
+        float commanded_yaw = 0.0f;
 
-            case AVOID_CONFIRMING:
-                left_pwm  = 0;
-                right_pwm = 0;
+        /* 1. Ask the Captain for the Boustrophedon plan! */
+        s_current_cmd = COVERAGE_Update(pose, obs_F, obs_R, obs_L, &commanded_yaw);
 
-                if (now - s_pause_timer >= 1000) {
-                    if (obs_F) {
-                        /* Calculate EXACT 90-degree targets based on current heading! */
-                        if (!obs_R) {
-                            s_avoid_state = AVOID_TURN_RIGHT;
-                            s_target_yaw = wrap360(s_current_yaw + 90.0f);
-                        } else if (!obs_L) {
-                            s_avoid_state = AVOID_TURN_LEFT;
-                            s_target_yaw = wrap360(s_current_yaw - 90.0f);
-                        } else if (!obs_B) {
-                            s_avoid_state = AVOID_BACKWARD;
-                        } else {
-                            s_avoid_state = AVOID_STOP;
-                        }
-                    } else {
-                        s_avoid_state = AVOID_FORWARD;
-                    }
-                }
-                break;
-
-            case AVOID_TURN_RIGHT:
-                left_pwm  =  350;
-                right_pwm = -350;
-                /* Stop turning when we are within 5 degrees of the 90-deg target */
-                if (fabsf(angle_diff(s_target_yaw, s_current_yaw)) < 5.0f) {
-                    s_avoid_state = AVOID_FORWARD;
-                }
-                break;
-
-            case AVOID_TURN_LEFT:
-                left_pwm  = -350;
-                right_pwm =  350;
-                if (fabsf(angle_diff(s_target_yaw, s_current_yaw)) < 5.0f) {
-                    s_avoid_state = AVOID_FORWARD;
-                }
-                break;
-
-            case AVOID_BACKWARD:
-                left_pwm  = -300;
-                right_pwm = -300;
-                if (!obs_R && !obs_L) {
-                    s_avoid_state = AVOID_TURN_RIGHT;
-                    s_target_yaw = wrap360(s_current_yaw + 90.0f);
-                } else if (!obs_R) {
-                    s_avoid_state = AVOID_TURN_RIGHT;
-                    s_target_yaw = wrap360(s_current_yaw + 90.0f);
-                } else if (!obs_L) {
-                    s_avoid_state = AVOID_TURN_LEFT;
-                    s_target_yaw = wrap360(s_current_yaw - 90.0f);
-                } else if (obs_B) {
-                    s_avoid_state = AVOID_STOP;
-                }
-                break;
-
-            case AVOID_STOP:
+        /* 2. The Driver executes the plan */
+        if (s_current_cmd == CMD_DRIVE_FORWARD) {
+            if (obs_F) {
+                /* SAFETY OVERRIDE: Human stepped in front! Slam brakes! */
                 left_pwm = 0;
                 right_pwm = 0;
-                if (!obs_F) s_avoid_state = AVOID_FORWARD;
-                break;
+            } else {
+                /* ── IMU HEADING LOCK (Straight Line Assist) ── */
+                float heading_error = angle_diff(commanded_yaw, s_current_yaw);
+
+                /* Apply simple Proportional correction */
+                int correction = (int)(heading_error * 2.0f);
+
+                left_pwm  = 300 + correction;
+                right_pwm = 300 - correction;
+
+                /* Clamp PWM limits */
+                if (left_pwm > 400) left_pwm = 400;
+                if (left_pwm < 200) left_pwm = 200;
+                if (right_pwm > 400) right_pwm = 400;
+                if (right_pwm < 200) right_pwm = 200;
+            }
+        }
+        else if (s_current_cmd == CMD_TURN_RIGHT) {
+            left_pwm = 350; right_pwm = -350;
+            s_target_yaw = commanded_yaw;
+        }
+        else if (s_current_cmd == CMD_TURN_LEFT) {
+            left_pwm = -350; right_pwm = 350;
+            s_target_yaw = commanded_yaw;
+        }
+        else {
+            /* CMD_STOP */
+            left_pwm = 0; right_pwm = 0;
         }
 
         uint8_t left_dir  = (left_pwm >= 0)  ? MOTOR_FORWARD : MOTOR_BACKWARD;
@@ -361,7 +307,7 @@ void GENERAL_Update(void)
 
             ODOM_UpdateEncoders(sim_v_left, sim_v_right, current_3d.yaw, 0.01f);
 
-            RobotPose pose = ODOM_GetPose();
+            pose = ODOM_GetPose(); /* Get the newly simulated pose */
             Map_UpdateRobotPose(&g_map, pose.x, pose.y, pose.theta);
         }
     }
@@ -378,17 +324,16 @@ void GENERAL_Update(void)
             s_lidar_hits[s_lidar_idx] = 0;
         }
 
-        /* Plot LiDAR Obstacles on the Map ONLY if the robot is moving! */
-		if (s_is_moving && dist > 40 && dist < 3500) {
-			float angle = 0.0f;
-			if(s_lidar_idx == 0) angle = 0.0f;   /* Front */
-			if(s_lidar_idx == 1) angle = 90.0f;  /* Right */
-			if(s_lidar_idx == 2) angle = 180.0f; /* Back  */
-			if(s_lidar_idx == 3) angle = 270.0f; /* Left  */
+        if (s_is_moving && dist > 40 && dist < 3500) {
+            float angle = 0.0f;
+            if(s_lidar_idx == 0) angle = 0.0f;   /* Front */
+            if(s_lidar_idx == 1) angle = 90.0f;  /* Right */
+            if(s_lidar_idx == 2) angle = 180.0f; /* Back  */
+            if(s_lidar_idx == 3) angle = 270.0f; /* Left  */
 
-			/* Call the updated LiDAR mapping function! */
-			Map_UpdateLiDAR(&g_map, dist / 1000.0f, angle);
-		}
+            /* FIXED: Uses your updated Map_UpdateLiDAR function! */
+            Map_UpdateLiDAR(&g_map, dist / 1000.0f, angle);
+        }
 
         s_lidar_idx = (s_lidar_idx + 1) % 4;
     }
@@ -397,7 +342,6 @@ void GENERAL_Update(void)
     if ((now - s_last_oled_ms) >= 200) {
         s_last_oled_ms = now;
 
-        /* The Button controls which screen gets rendered! */
         if (s_current_page == 0) {
             render_dashboard_page();
         } else {
