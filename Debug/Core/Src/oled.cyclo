@@ -6,3 +6,5 @@
 ../Core/Src/oled.c:79:6:OLED_ClearArea	1
 ../Core/Src/oled.c:83:6:OLED_Rectangle	1
 ../Core/Src/oled.c:88:6:OLED_DrawOutline	1
+../Core/Src/oled.c:94:6:OLED_DrawCircle	1
+../Core/Src/oled.c:98:6:OLED_DrawLine	1

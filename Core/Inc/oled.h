@@ -10,4 +10,6 @@ void OLED_Update(void);
 void OLED_ClearArea(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
 void OLED_Rectangle(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
 void OLED_DrawOutline(uint8_t x, uint8_t y, uint8_t w, uint8_t h);
+void OLED_DrawCircle(uint8_t x, uint8_t y, uint8_t r);
+void OLED_DrawLine(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2);
 #endif

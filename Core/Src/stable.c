@@ -57,6 +57,13 @@ void STABLE_Update(MPU6050_RawData *imu, HMC5883L_RawData *mag, float dt)
     float accel_roll  = atan2f(ay, az) * RAD_TO_DEG;
     float accel_pitch = atan2f(-ax, sqrtf(ay * ay + az * az)) * RAD_TO_DEG;
 
+    /* ════════════════════════════════════════════════════════════ */
+	/* NEW: HARDWARE CALIBRATION OFFSETS                            */
+	/* Subtract the 'flat floor' error so flat = exactly 0.0        */
+	/* ════════════════════════════════════════════════════════════ */
+	//s_orient.pitch -= (-5.0f);
+	//s_orient.roll  -= (-2.0f);
+
     /* ── Gyro-integrated roll / pitch ────────────────────────── */
     float gyro_roll  = s_orient.roll  + gx * dt;
     float gyro_pitch = s_orient.pitch + gy * dt;

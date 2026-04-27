@@ -1,9 +1,12 @@
 #include "general.h"
-#include "lidar.h"
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
-#include <stdlib.h>
+#include <stdio.h>   /* Standard I/O: Gives you snprintf() to format text and numbers for your OLED screen */
+#include <string.h>  /* String & Memory: Gives you memset() to instantly clear your 10,000-cell map array to 0 */
+#include <math.h>    /* Math: Gives you sinf(), cosf(), and atan2f() for your compass and LiDAR trigonometry */
+#include <stdlib.h>  /* Standard Library: Gives you abs() to calculate absolute values (like in your Bresenham ray-casting) */
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846f
+#endif
 
 /* ── Global Map Instance ───────────────────────────────────────*/
 Map g_map;
@@ -15,6 +18,9 @@ extern I2C_HandleTypeDef hi2c2;
 /* ── Module-private state ───────────────────────────────────────*/
 static uint32_t s_last_oled_ms = 0;
 static uint32_t s_last_logic_ms  = 0;
+
+/* OLED Page Tracker (0 = Dashboard, 1 = Compass) */
+static uint8_t  s_current_page  = 0;
 
 /* Store RAW uint16_t values (Millimeters) */
 static uint32_t s_last_lidar_ms = 0;
@@ -74,7 +80,7 @@ static void format_dist_mm(uint16_t raw_dist, char* out_str) {
 }
 
 /* ═══════════════════════════════════════════════════════════════ */
-/* UNIFIED DASHBOARD PAGE                                          */
+/* UNIFIED DASHBOARD PAGE 0                                        */
 /* ═══════════════════════════════════════════════════════════════ */
 static void render_dashboard_page(void)
 {
@@ -114,8 +120,59 @@ static void render_dashboard_page(void)
     else if (s_avoid_state == AVOID_TURN_RIGHT) state_str = "TURN RIGHT";
     else if (s_avoid_state == AVOID_STOP)       state_str = "EMERG STOP!";
 
-    OLED_Print(0, 44, "ACT: ");
-    OLED_Print(36, 44, state_str);
+    OLED_Print(0, 45, "ACT: ");
+    OLED_Print(36, 45, state_str);
+
+    OLED_Update();
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* COMPASS PAGE (1)                                                */
+/* ═══════════════════════════════════════════════════════════════ */
+static void render_compass_page(void)
+{
+    char buf[32];
+    OLED_Clear();
+
+    /* 1. Left Side: The 64x64 Compass Circle */
+    uint8_t cx = 32; /* Center X */
+    uint8_t cy = 32; /* Center Y */
+    uint8_t r  = 28; /* Radius   */
+
+    OLED_DrawCircle(cx, cy, r);
+    OLED_DrawCircle(cx, cy, 2); /* Draw a tiny hub in the middle */
+
+    /* The "North" mark at the top of the dial */
+    OLED_Print(30, 0, "N");
+    OLED_Print(30, 56, "S");
+
+    /* 2. Calculate Compass Needle Math */
+    /* 0 degrees is UP (North). Screen coordinates: UP is -Y. */
+    float rad = s_current_yaw * (M_PI / 180.0f);
+
+    /* Calculate the tip of the line using Sine and Cosine */
+    uint8_t end_x = (uint8_t)(cx + (r * sinf(rad)));
+	uint8_t end_y = (uint8_t)(cy - (r * cosf(rad)));
+
+    /* Draw the needle from the center out to the edge */
+    OLED_DrawLine(cx, cy, end_x, end_y);
+
+    /* 3. Right Side: The Text Telemetry (Starts at X=68) */
+    Orientation current_3d = STABLE_GetOrientation();
+
+    OLED_Print(68, 0, "COMPASS");
+    OLED_DrawLine(68, 10, 120, 10); /* Underline */
+
+    snprintf(buf, sizeof(buf), "HDG:");
+    OLED_Print(68, 16, buf);
+    snprintf(buf, sizeof(buf), "%3.0f deg", s_current_yaw);
+    OLED_Print(68, 26, buf);
+
+    snprintf(buf, sizeof(buf), "P: %2.0f", current_3d.pitch);
+    OLED_Print(68, 42, buf);
+
+    snprintf(buf, sizeof(buf), "R: %2.0f", current_3d.roll);
+    OLED_Print(68, 52, buf);
 
     OLED_Update();
 }
@@ -135,6 +192,7 @@ void GENERAL_Init(void)
     OLED_Update();
 
     /* Boot up the IMU and Compass */
+    BTNS_Init();
     MPU6050_Init();
     HMC5883L_Init();
     STABLE_Init();
@@ -168,7 +226,14 @@ void GENERAL_Update(void)
     if ((now - s_last_logic_ms) >= 10) {
         s_last_logic_ms = now;
 
-        /* A. Read IMU and update real-time Orientation */
+        /* A. Read Buttons for UI Changes! */
+        BTNS_Update();
+        if (BTNS_Get_OLEDPage() == BTN_PRESSED) {
+            /* Toggle between Page 0 and Page 1 */
+            s_current_page = !s_current_page;
+        }
+
+        /* B. Read IMU and update real-time Orientation */
         MPU6050_RawData imu;
         HMC5883L_RawData mag;
 
@@ -178,7 +243,7 @@ void GENERAL_Update(void)
             s_current_yaw = STABLE_GetOrientation().yaw;
         }
 
-        /* B. Evaluate Obstacles */
+        /* C. Evaluate Obstacles */
         int obs_F = (s_lidar_hits[0] >= 2);
         int obs_R = (s_lidar_hits[1] >= 2);
         int obs_B = (s_lidar_hits[2] >= 2);
@@ -187,7 +252,7 @@ void GENERAL_Update(void)
         int left_pwm = 0;
         int right_pwm = 0;
 
-        /* C. MASTER LOGIC STATE MACHINE */
+        /* D. MASTER LOGIC STATE MACHINE */
         switch (s_avoid_state)
         {
             case AVOID_FORWARD:
@@ -274,56 +339,46 @@ void GENERAL_Update(void)
         s_disp_l_pwm = left_pwm;
         s_disp_r_pwm = right_pwm;
 
-        /* D. ODOMETRY & MAPPING (The Kinematic Simulator) */
-		s_is_moving = (left_pwm != 0 || right_pwm != 0);
+        /* E. ODOMETRY & MAPPING (The Kinematic Simulator) */
+        s_is_moving = (left_pwm != 0 || right_pwm != 0);
 
-		if (s_is_moving) {
-			/* 1. Ask stable.c for the exact slope of the floor */
-			Orientation current_3d = STABLE_GetOrientation();
-			float pitch_deg = current_3d.pitch;
+        if (s_is_moving) {
+            Orientation current_3d = STABLE_GetOrientation();
+            float pitch_deg = current_3d.pitch;
 
-			/* 2. Base simulated speed on flat ground (0.4 m/s max) */
-			float sim_v_left  = (left_pwm  / 999.0f) * 0.4f;
-			float sim_v_right = (right_pwm / 999.0f) * 0.4f;
+            float sim_v_left  = (left_pwm  / 999.0f) * 0.4f;
+            float sim_v_right = (right_pwm / 999.0f) * 0.4f;
 
-			/* 3. Apply the Hill Physics! */
-			/* If pitch > 0 (uphill), sine is positive, speed drops.
-			   If pitch < 0 (downhill), sine is negative, speed increases! */
-			float gravity_pull = sinf(pitch_deg * (M_PI / 180.0f)) * 0.15f;
+            float gravity_pull = sinf(pitch_deg * (M_PI / 180.0f)) * 0.15f;
 
-			sim_v_left  -= gravity_pull;
-			sim_v_right -= gravity_pull;
+            sim_v_left  -= gravity_pull;
+            sim_v_right -= gravity_pull;
 
-			/* 4. Motor Stall Protection (Clamps) */
-			/* Don't slide backward when trying to drive forward */
-			if (left_pwm > 0 && sim_v_left < 0.0f) sim_v_left = 0.0f;
-			if (right_pwm > 0 && sim_v_right < 0.0f) sim_v_right = 0.0f;
+            if (left_pwm > 0 && sim_v_left < 0.0f) sim_v_left = 0.0f;
+            if (right_pwm > 0 && sim_v_right < 0.0f) sim_v_right = 0.0f;
+            if (left_pwm < 0 && sim_v_left > 0.0f) sim_v_left = 0.0f;
+            if (right_pwm < 0 && sim_v_right > 0.0f) sim_v_right = 0.0f;
 
-			/* Don't slide forward when trying to reverse up a steep hill */
-			if (left_pwm < 0 && sim_v_left > 0.0f) sim_v_left = 0.0f;
-			if (right_pwm < 0 && sim_v_right > 0.0f) sim_v_right = 0.0f;
+            ODOM_UpdateEncoders(sim_v_left, sim_v_right, current_3d.yaw, 0.01f);
 
-			/* Fuse the slope-adjusted speed with the tilt-compensated compass! */
-			ODOM_UpdateEncoders(sim_v_left, sim_v_right, current_3d.yaw, 0.01f);
-
-			RobotPose pose = ODOM_GetPose();
-			Map_UpdateRobotPose(&g_map, pose.x, pose.y, pose.theta);
-		}
+            RobotPose pose = ODOM_GetPose();
+            Map_UpdateRobotPose(&g_map, pose.x, pose.y, pose.theta);
+        }
     }
 
     /* ── 2. LiDAR round-robin ──── */
-	if ((now - s_last_lidar_ms) >= 35) {
-		s_last_lidar_ms = now;
-		uint16_t dist = LIDAR_GetFilteredDistance(s_lidar_idx);
-		s_lidar_raw[s_lidar_idx] = dist;
+    if ((now - s_last_lidar_ms) >= 35) {
+        s_last_lidar_ms = now;
+        uint16_t dist = LIDAR_GetFilteredDistance(s_lidar_idx);
+        s_lidar_raw[s_lidar_idx] = dist;
 
-		if (dist > 40 && dist <= 200) {
-			if (s_lidar_hits[s_lidar_idx] < 2) s_lidar_hits[s_lidar_idx]++;
-		} else {
-			s_lidar_hits[s_lidar_idx] = 0;
-		}
+        if (dist > 40 && dist <= 200) {
+            if (s_lidar_hits[s_lidar_idx] < 2) s_lidar_hits[s_lidar_idx]++;
+        } else {
+            s_lidar_hits[s_lidar_idx] = 0;
+        }
 
-		/* Plot LiDAR Obstacles on the Map ONLY if the robot is moving! */
+        /* Plot LiDAR Obstacles on the Map ONLY if the robot is moving! */
 		if (s_is_moving && dist > 40 && dist < 3500) {
 			float angle = 0.0f;
 			if(s_lidar_idx == 0) angle = 0.0f;   /* Front */
@@ -331,15 +386,22 @@ void GENERAL_Update(void)
 			if(s_lidar_idx == 2) angle = 180.0f; /* Back  */
 			if(s_lidar_idx == 3) angle = 270.0f; /* Left  */
 
-			Map_UpdateUltrasonic(&g_map, dist / 1000.0f, angle);
+			/* Call the updated LiDAR mapping function! */
+			Map_UpdateLiDAR(&g_map, dist / 1000.0f, angle);
 		}
 
-		s_lidar_idx = (s_lidar_idx + 1) % 4;
-	}
+        s_lidar_idx = (s_lidar_idx + 1) % 4;
+    }
 
     /* ── 3. OLED refresh ─────────────────────── */
     if ((now - s_last_oled_ms) >= 200) {
         s_last_oled_ms = now;
-        render_dashboard_page();
+
+        /* The Button controls which screen gets rendered! */
+        if (s_current_page == 0) {
+            render_dashboard_page();
+        } else {
+            render_compass_page();
+        }
     }
 }
