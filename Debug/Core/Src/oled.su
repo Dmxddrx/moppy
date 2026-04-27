@@ -8,3 +8,4 @@
 ../Core/Src/oled.c:88:6:OLED_DrawOutline	32	static
 ../Core/Src/oled.c:94:6:OLED_DrawCircle	16	static
 ../Core/Src/oled.c:98:6:OLED_DrawLine	32	static
+../Core/Src/oled.c:105:6:OLED_DrawPixel	16	static

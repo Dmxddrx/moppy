@@ -98,3 +98,14 @@ void OLED_DrawCircle(uint8_t x, uint8_t y, uint8_t r) {
 void OLED_DrawLine(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2) {
     SSD1306_DrawLine(x1, y1, x2, y2, SSD1306_COLOR_WHITE);
 }
+/* ─────────────────────────────────────────────────────────────── */
+/* OLED_DrawPixel — Bridging to the low-level library              */
+/* color: 1 = White, 0 = Black                                     */
+/* ─────────────────────────────────────────────────────────────── */
+void OLED_DrawPixel(uint8_t x, uint8_t y, uint8_t color) {
+    if (color) {
+    	SSD1306_DrawPixel(x, y, SSD1306_COLOR_WHITE);
+    } else {
+    	SSD1306_DrawPixel(x, y, SSD1306_COLOR_BLACK);
+    }
+}

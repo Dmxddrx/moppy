@@ -11,9 +11,11 @@
 /* ── Cell states ────────────────────────────────────────────────
    Each cell is one byte.
    0     = Uncleaned Virgin Floor
-   1-254 = Number of times the robot cleaned this exact cell
+   1-253 = Number of times the robot cleaned this exact cell
+   254   = LiDAR saw it's empty, but not cleaned yet (BLINK!)
    255   = Solid Wall / Obstacle                                */
 #define CELL_UNCLEANED   0
+#define CELL_SEEN_FREE   254
 #define CELL_OBSTACLE    255
 
 /* ── OLED viewport  ─────────────────────────────────────────────

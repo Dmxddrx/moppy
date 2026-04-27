@@ -1,6 +1,7 @@
 ../Core/Src/general.c:42:14:angle_diff	3
 ../Core/Src/general.c:52:13:format_dist_mm	4
 ../Core/Src/general.c:65:13:render_dashboard_page	5
-../Core/Src/general.c:115:13:render_compass_page	1
-../Core/Src/general.c:166:6:GENERAL_Init	1
-../Core/Src/general.c:204:6:GENERAL_Update	38
+../Core/Src/general.c:111:13:render_compass_page	1
+../Core/Src/general.c:159:13:render_map_page	7
+../Core/Src/general.c:222:6:GENERAL_Init	1
+../Core/Src/general.c:262:6:GENERAL_Update	39

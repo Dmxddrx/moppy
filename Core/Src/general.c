@@ -102,10 +102,6 @@ static void render_dashboard_page(void)
     OLED_Print(0, 43, "ACT: ");
     OLED_Print(36, 43, state_str);
 
-    float cleaned_area = g_map.cells_cleaned * 0.0225f;
-        snprintf(buf, sizeof(buf), "Area: %-5.2f m2", cleaned_area);
-        OLED_Print(0, 54, buf);
-
     OLED_Update();
 }
 
@@ -160,6 +156,66 @@ static void render_compass_page(void)
     OLED_Update();
 }
 
+static void render_map_page(void)
+{
+    OLED_Clear();
+
+    /* 1. Get the viewport (the 64x64 slice of the map around the robot) */
+    int vx0, vy0;
+    Map_GetViewport(&g_map, &vx0, &vy0);
+
+    /* NEW: Create a blink state that flips between 1 and 0 every 400ms */
+    uint8_t blink_state = (HAL_GetTick() / 400) % 2;
+
+    /* 2. Draw the Grid Pixels */
+    for (int y = 0; y < 64; y++) {
+        for (int x = 0; x < 64; x++) {
+            uint8_t cell = Map_GetCellByIndex(&g_map, vx0 + x, vy0 + y);
+
+            if (cell == CELL_OBSTACLE) {
+                OLED_DrawPixel(x, y, 0); /* User requested: Obstacles OFF */
+            }
+            else if (cell == CELL_SEEN_FREE) {
+                OLED_DrawPixel(x, y, blink_state); /* Seen but not clean: BLINK */
+            }
+            else if (cell > 0 && cell < 254) {
+                OLED_DrawPixel(x, y, 1); /* Cleaned: Solid ON */
+            }
+            /* CELL_UNCLEANED (0) remains OFF automatically by OLED_Clear */
+        }
+    }
+
+    /* 3. Draw Robot Icon (With Directional Nose!) */
+	int rx = Map_RobotCellX(&g_map) - vx0;
+	int ry = Map_RobotCellY(&g_map) - vy0;
+
+	/* Draw a small hollow square for the robot body */
+	OLED_DrawPixel(rx-1, ry-1, 1); OLED_DrawPixel(rx+1, ry-1, 1);
+	OLED_DrawPixel(rx-1, ry+1, 1); OLED_DrawPixel(rx+1, ry+1, 1);
+	OLED_DrawPixel(rx, ry, !blink_state); /* Flashing core */
+
+	/* Draw a line pointing exactly where the compass is facing! */
+	float rad = s_current_yaw * (M_PI / 180.0f);
+	int nose_x = rx + (int)(5.0f * sinf(rad));
+	int nose_y = ry - (int)(5.0f * cosf(rad)); /* -Y is UP on the OLED */
+
+	OLED_DrawLine(rx, ry, nose_x, nose_y);
+
+    /* 4. Right side Telemetry Info */
+    char buf[16];
+    RobotPose pose = ODOM_GetPose();
+    snprintf(buf, sizeof(buf), "X:%0.1f", pose.x);
+    OLED_Print(68, 10, buf);
+    snprintf(buf, sizeof(buf), "Y:%0.1f", pose.y);
+    OLED_Print(68, 20, buf);
+
+    float progress = (g_map.cells_cleaned / 10000.0f) * 100.0f;
+    snprintf(buf, sizeof(buf), "Cln:%0.1f%%", progress);
+    OLED_Print(68, 45, buf);
+
+    OLED_Update();
+}
+
 /* ═══════════════════════════════════════════════════════════════ */
 /* GENERAL_Init                                                   */
 /* ═══════════════════════════════════════════════════════════════ */
@@ -183,6 +239,8 @@ void GENERAL_Init(void)
     /* NEW: Initialize the map and odometry at (15.0m, 15.0m) */
 	ODOM_Init();
 	Map_Init(&g_map);
+
+    COVERAGE_Init();
 
     LIDAR_Init();
     MOTOR_Init();
@@ -212,7 +270,7 @@ void GENERAL_Update(void)
         /* A. Read Buttons for UI Changes! */
         BTNS_Update();
         if (BTNS_Get_OLEDPage() == BTN_PRESSED) {
-            s_current_page = !s_current_page;
+            s_current_page = (s_current_page + 1) % 3;
         }
 
         /* B. Read IMU */
@@ -305,10 +363,17 @@ void GENERAL_Update(void)
             if (left_pwm < 0 && sim_v_left > 0.0f) sim_v_left = 0.0f;
             if (right_pwm < 0 && sim_v_right > 0.0f) sim_v_right = 0.0f;
 
-            ODOM_UpdateEncoders(sim_v_left, sim_v_right, current_3d.yaw, 0.01f);
+            /* Update the physics simulator */
+			ODOM_UpdateEncoders(sim_v_left, sim_v_right, current_3d.yaw, 0.01f);
 
-            pose = ODOM_GetPose(); /* Get the newly simulated pose */
-            Map_UpdateRobotPose(&g_map, pose.x, pose.y, pose.theta);
+			pose = ODOM_GetPose(); /* Get pose (Odometry naturally starts at 0,0) */
+
+			/* ── THE CENTER FIX ── */
+			/* Add 7.5 meters so the physical (0,0) matches the center of the Map Array! */
+			float map_center_x = pose.x + 7.5f;
+			float map_center_y = pose.y + 7.5f;
+
+			Map_UpdateRobotPose(&g_map, map_center_x, map_center_y, pose.theta);
         }
     }
 
@@ -339,13 +404,15 @@ void GENERAL_Update(void)
     }
 
     /* ── 3. OLED refresh ─────────────────────── */
-    if ((now - s_last_oled_ms) >= 200) {
-        s_last_oled_ms = now;
+        if ((now - s_last_oled_ms) >= 200) {
+            s_last_oled_ms = now;
 
-        if (s_current_page == 0) {
-            render_dashboard_page();
-        } else {
-            render_compass_page();
+            if (s_current_page == 0) {
+                render_dashboard_page();
+            } else if (s_current_page == 1) {
+                render_compass_page();
+            } else {
+                render_map_page(); /* <--- Add this */
+            }
         }
-    }
 }

@@ -21,16 +21,11 @@
 /* ── Feature switches ───────────────────────────────────────────*/
 #define ENABLE_OLED_DEBUG      1
 
-/* ── OLED pages ─────────────────────────────────────────────────
-   Page 0: Map viewport (32 blocks of 16×16 px)
-   Page 1: Ultrasonic distances (4 sensors)
-   Page 2: IMU data (accel, gyro, heading)
-   Page 3: Position & speed                                       */
-#define OLED_PAGE_MAP       	0
-#define OLED_PAGE_ULTRASONIC 	1
-#define OLED_PAGE_IMU       	2
-#define OLED_PAGE_POSITION  	3
-#define OLED_NUM_PAGES      	4
+/* ── OLED pages ─────────────────────────────────────────────────*/
+#define OLED_PAGE_DASHBOARD 0
+#define OLED_PAGE_COMPASS   1
+#define OLED_PAGE_MAP       2
+#define OLED_NUM_PAGES      3 /* Set this to 3 to match your code */
 
 /* ── Timing ─────────────────────────────────────────────────────
    OLED    : 5 Hz  (200 ms) — SSD1306 I2C update takes ~23 ms

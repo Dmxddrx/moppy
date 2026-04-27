@@ -56,18 +56,18 @@ void Map_UpdateRobotPose(Map *map, float x, float y, float theta_deg)
     int cy = clamp_y((int)(y / MAP_CELL_SIZE));
 
     /* Rule 1: Don't accidentally clean a wall! */
-    if (map->grid[cx][cy] != CELL_OBSTACLE) {
+	if (map->grid[cx][cy] != CELL_OBSTACLE) {
 
-        /* If this is the FIRST time hitting this cell, increment the global statistic */
-        if (map->grid[cx][cy] == CELL_UNCLEANED) {
-            map->cells_cleaned++;
-        }
-
-        /* Rule 2: Increment the times this specific cell was cleaned (max 254) */
-        if (map->grid[cx][cy] < 254) {
-            map->grid[cx][cy]++;
-        }
-    }
+		/* If this is the FIRST time hitting this cell (Virgin OR Seen Free) */
+		if (map->grid[cx][cy] == CELL_UNCLEANED || map->grid[cx][cy] == CELL_SEEN_FREE) {
+			map->cells_cleaned++;
+			map->grid[cx][cy] = 1; /* Start cleaning count at 1 */
+		}
+		/* Rule 2: Increment the times this specific cell was cleaned (max 253) */
+		else if (map->grid[cx][cy] < 253) {
+			map->grid[cx][cy]++;
+		}
+	}
 }
 
 /* ─────────────────────────────────────────────────────────────── */
@@ -160,10 +160,10 @@ void Map_UpdateLiDAR(Map *map, float distance_m, float sensor_angle_deg)
         if (!in_bounds(x0, y0)) break;
 
         /* Don't override cleaned cells or already-known obstacles */
-        if (map->grid[x0][y0] == CELL_UNCLEANED) {
-            /* "Seen free" but not cleaned — keep as UNCLEANED for now
-               so the floor robot still knows it needs to physically visit it */
-        }
+		if (map->grid[x0][y0] == CELL_UNCLEANED) {
+			/* NEW: Mark it as SEEN so it blinks on the radar! */
+			map->grid[x0][y0] = CELL_SEEN_FREE;
+		}
 
         int e2 = 2 * err;
         if (e2 >= dy) { err += dy; x0 += sx; }
