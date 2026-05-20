@@ -33,6 +33,7 @@ static float s_current_yaw = 0.0f;
 static float s_target_yaw  = 0.0f;
 static int   s_is_moving   = 0; /* NEW: Tracks if the motors/LEDs are active */
 static CoverageCmd s_current_cmd = CMD_STOP; /* The Captain's Orders! */
+static int s_first_run = 1;
 
 
 /* Variables to share motor speeds with the OLED display */
@@ -77,20 +78,20 @@ static void render_dashboard_page(void)
     format_dist_mm(s_lidar_raw[2], str_B);
     format_dist_mm(s_lidar_raw[3], str_L);
 
-    OLED_DrawOutline(0, 0, 100, 19);
+    OLED_DrawOutline(0, 0, 100, 22);
 
     snprintf(buf, sizeof(buf), "F:%-5s  B:%-5s", str_F, str_B);
-    OLED_Print(2, 2, buf);
+    OLED_Print(4, 3, buf);
 
     snprintf(buf, sizeof(buf), "R:%-5s  L:%-5s", str_R, str_L);
-    OLED_Print(2, 11, buf);
+    OLED_Print(4, 12, buf);
 
     /* SHOW THE 9-AXIS HEADING AND THE MAP COORDINATES! */
 	snprintf(buf, sizeof(buf), "H:%-3.0f X:%-4.1f Y:%-4.1f", s_current_yaw, pose.x, pose.y);
-	OLED_Print(0, 23, buf);
+	OLED_Print(0, 30, buf);
 
     snprintf(buf, sizeof(buf), "PWM L:%-4d R:%-4d", s_disp_l_pwm, s_disp_r_pwm);
-    OLED_Print(0, 34, buf);
+    OLED_Print(0, 42, buf);
 
     /* UPGRADED: Map the new Coverage Commands to display strings */
         const char* state_str = "IDLE";
@@ -99,8 +100,8 @@ static void render_dashboard_page(void)
         else if (s_current_cmd == CMD_TURN_RIGHT)   state_str = "TURNING R";
         else if (s_current_cmd == CMD_STOP)         state_str = "STOPPED";
 
-    OLED_Print(0, 43, "ACT: ");
-    OLED_Print(36, 43, state_str);
+    OLED_Print(0, 55, "ACT: ");
+    OLED_Print(36, 55, state_str);
 
     OLED_Update();
 }
@@ -140,18 +141,26 @@ static void render_compass_page(void)
     Orientation current_3d = STABLE_GetOrientation();
 
     OLED_Print(68, 0, "COMPASS");
-    OLED_DrawLine(68, 10, 120, 10); /* Underline */
 
-    snprintf(buf, sizeof(buf), "HDG:");
-    OLED_Print(68, 16, buf);
     snprintf(buf, sizeof(buf), "%3.0f deg", s_current_yaw);
-    OLED_Print(68, 26, buf);
+    OLED_Print(68, 13, buf);
 
     snprintf(buf, sizeof(buf), "P: %2.0f", current_3d.pitch);
-    OLED_Print(68, 42, buf);
+    OLED_Print(68, 30, buf);
 
     snprintf(buf, sizeof(buf), "R: %2.0f", current_3d.roll);
-    OLED_Print(68, 52, buf);
+    OLED_Print(68, 40, buf);
+
+    /* Grab the Captain's Current Command */
+        const char* state_str = "IDLE";
+        if (s_current_cmd == CMD_DRIVE_FORWARD)     state_str = "SWEEPING";
+        else if (s_current_cmd == CMD_TURN_LEFT)    state_str = "TURNING L";
+        else if (s_current_cmd == CMD_TURN_RIGHT)   state_str = "TURNING R";
+        else if (s_current_cmd == CMD_STOP)         state_str = "STOPPED";
+
+        /* Display the Action Status */
+        //OLED_Print(68, 26, "ACT:");
+        OLED_Print(68, 55, state_str);
 
     OLED_Update();
 }
@@ -205,13 +214,27 @@ static void render_map_page(void)
     char buf[16];
     RobotPose pose = ODOM_GetPose();
     snprintf(buf, sizeof(buf), "X:%0.1f", pose.x);
-    OLED_Print(68, 10, buf);
+    OLED_Print(68, 0, buf);
     snprintf(buf, sizeof(buf), "Y:%0.1f", pose.y);
-    OLED_Print(68, 20, buf);
+    OLED_Print(68, 10, buf);
 
     float progress = (g_map.cells_cleaned / 10000.0f) * 100.0f;
     snprintf(buf, sizeof(buf), "Cln:%0.1f%%", progress);
-    OLED_Print(68, 45, buf);
+    OLED_Print(68, 25, buf);
+
+    /* Grab the Captain's Current Command */
+        const char* state_str = "IDLE";
+        if (s_current_cmd == CMD_DRIVE_FORWARD)     state_str = "SWEEPING";
+        else if (s_current_cmd == CMD_TURN_LEFT)    state_str = "TURNING L";
+        else if (s_current_cmd == CMD_TURN_RIGHT)   state_str = "TURNING R";
+        else if (s_current_cmd == CMD_STOP)         state_str = "STOPPED";
+
+        /* Display the Action Status */
+        //OLED_Print(68, 26, "ACT:");
+        OLED_Print(68, 55, state_str);
+
+        snprintf(buf, sizeof(buf), "%3.0f deg", s_current_yaw);
+        OLED_Print(68, 45, buf);
 
     OLED_Update();
 }
@@ -240,7 +263,7 @@ void GENERAL_Init(void)
 	ODOM_Init();
 	Map_Init(&g_map);
 
-    COVERAGE_Init();
+    //COVERAGE_Init();
 
     LIDAR_Init();
     MOTOR_Init();
@@ -263,6 +286,8 @@ void GENERAL_Update(void)
 {
     uint32_t now = HAL_GetTick();
 
+    static int s_first_run = 1;
+
     /* ── 1. Autonomous Loop (10 ms period = 100 Hz) ──────────── */
     if ((now - s_last_logic_ms) >= 10) {
         s_last_logic_ms = now;
@@ -281,6 +306,11 @@ void GENERAL_Update(void)
             STABLE_Update(&imu, &mag, 0.01f);
             s_current_yaw = STABLE_GetOrientation().yaw;
         }
+
+        if (s_first_run) {
+			COVERAGE_Init(s_current_yaw); /* Captain locks onto the start direction! */
+			s_first_run = 0;
+		}
 
         /* C. Evaluate Obstacles */
         int obs_F = (s_lidar_hits[0] >= 2);

@@ -12,7 +12,7 @@ typedef enum {
     CMD_STOP
 } CoverageCmd;
 
-void COVERAGE_Init(void);
+void COVERAGE_Init(float start_heading);
 
 /* * The Brain: Call this every 10ms.
  * It evaluates the surroundings and tells the robot what to do next.

@@ -16,6 +16,8 @@ static int s_turn_dir = 1; /* 1 = Right U-Turn, -1 = Left U-Turn */
 
 static float s_target_yaw = 0.0f;
 
+static float s_row_heading = 0.0f;
+
 /* For tracking the precise 15cm (0.15m) step */
 static float s_step_start_x = 0.0f;
 static float s_step_start_y = 0.0f;
@@ -42,13 +44,11 @@ static float angle_diff(float target, float current) {
 /* ═══════════════════════════════════════════════════════════════ */
 /* PUBLIC FUNCTIONS                                                */
 /* ═══════════════════════════════════════════════════════════════ */
-void COVERAGE_Init(void) {
+void COVERAGE_Init(float start_heading) {
     s_state = LAWN_SWEEPING;
     s_turn_dir = 1; /* Start by turning right at the very first wall */
+    s_row_heading = start_heading; //Lock onto our boot direction!
 }
-
-/* Add this variable near the top with your other static variables */
-static float s_row_heading = 0.0f;
 
 CoverageCmd COVERAGE_Update(RobotPose pose, int obs_F, int obs_R, int obs_L, float* out_target_yaw) {
     CoverageCmd cmd = CMD_DRIVE_FORWARD;

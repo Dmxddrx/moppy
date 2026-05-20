@@ -1,7 +1,7 @@
-../Core/Src/general.c:42:14:angle_diff	3
-../Core/Src/general.c:52:13:format_dist_mm	4
-../Core/Src/general.c:65:13:render_dashboard_page	5
-../Core/Src/general.c:111:13:render_compass_page	1
-../Core/Src/general.c:159:13:render_map_page	7
-../Core/Src/general.c:222:6:GENERAL_Init	1
-../Core/Src/general.c:262:6:GENERAL_Update	39
+../Core/Src/general.c:43:14:angle_diff	3
+../Core/Src/general.c:53:13:format_dist_mm	4
+../Core/Src/general.c:66:13:render_dashboard_page	5
+../Core/Src/general.c:112:13:render_compass_page	5
+../Core/Src/general.c:168:13:render_map_page	11
+../Core/Src/general.c:245:6:GENERAL_Init	1
+../Core/Src/general.c:285:6:GENERAL_Update	40
