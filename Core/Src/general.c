@@ -11,9 +11,15 @@
 /* ── Global Map Instance ───────────────────────────────────────*/
 Map g_map;
 
-/* ── I2C handles ─────────────────────────────────────────────── */
+/* ── Hardware Handles (Imported from main.c) ──────────────────── */
 extern I2C_HandleTypeDef hi2c1;
 extern I2C_HandleTypeDef hi2c2;
+extern UART_HandleTypeDef huart2;
+
+/* ── Global Network Tracking Variables ───────────────────────── */
+uint8_t wifi_is_connected = 0;
+uint8_t esp_is_ready       = 0;
+char    current_ip[16]    = "0.0.0.0";
 
 /* ── Module-private state ───────────────────────────────────────*/
 static uint32_t s_last_oled_ms = 0;
@@ -34,7 +40,10 @@ static float s_target_yaw  = 0.0f;
 static int   s_is_moving   = 0; /* NEW: Tracks if the motors/LEDs are active */
 static CoverageCmd s_current_cmd = CMD_STOP; /* The Captain's Orders! */
 static int s_first_run = 1;
+static float s_heading_integral = 0.0f;
 
+/* Store the latest physical IMU data for Wi-Fi broadcast */
+static MPU6050_PhysData s_last_imu_phys = {0};
 
 /* Variables to share motor speeds with the OLED display */
 static int s_disp_l_pwm = 0;
@@ -45,6 +54,25 @@ static float angle_diff(float target, float current) {
     while(d >  180.0f) d -= 360.0f;
     while(d < -180.0f) d += 360.0f;
     return d;
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* TELEMETRY BROADCAST ENGINE                                      */
+/* ═══════════════════════════════════════════════════════════════ */
+static void send_telemetry_wifi(void) {
+    if (!wifi_is_connected) return;
+
+    char tx_buf[512];
+    RobotPose pose = ODOM_GetPose();
+
+    snprintf(tx_buf, sizeof(tx_buf),
+            "{\"F\":%u, \"R\":%u, \"B\":%u, \"L\":%u, \"yaw\":%.1f, \"X\":%.1f, \"Y\":%.1f, \"pwmL\":%d, \"pwmR\":%d, \"cmd\":%d, \"ax\":%.2f, \"ay\":%.2f, \"az\":%.2f, \"gx\":%.2f, \"gy\":%.2f, \"gz\":%.2f}\n",
+            s_lidar_raw[0], s_lidar_raw[1], s_lidar_raw[2], s_lidar_raw[3],
+            s_current_yaw, pose.x, pose.y, s_disp_l_pwm, s_disp_r_pwm, s_current_cmd,
+            s_last_imu_phys.ax, s_last_imu_phys.ay, s_last_imu_phys.az,
+            s_last_imu_phys.gx, s_last_imu_phys.gy, s_last_imu_phys.gz);
+
+        WIFI_SendUDPData(tx_buf);
 }
 
 /* ═══════════════════════════════════════════════════════════════ */
@@ -121,50 +149,36 @@ static void render_compass_page(void)
 
     OLED_DrawCircle(cx, cy, r);
     OLED_DrawCircle(cx, cy, 2); /* Draw a tiny hub in the middle */
-
-    /* The "North" mark at the top of the dial */
     OLED_Print(30, 0, "N");
     OLED_Print(30, 56, "S");
 
-    /* 2. Calculate Compass Needle Math */
-    /* 0 degrees is UP (North). Screen coordinates: UP is -Y. */
     float rad = s_current_yaw * (M_PI / 180.0f);
-
-    /* Calculate the tip of the line using Sine and Cosine */
     uint8_t end_x = (uint8_t)(cx + (r * sinf(rad)));
 	uint8_t end_y = (uint8_t)(cy - (r * cosf(rad)));
-
-    /* Draw the needle from the center out to the edge */
     OLED_DrawLine(cx, cy, end_x, end_y);
 
-    /* 3. Right Side: The Text Telemetry (Starts at X=68) */
     Orientation current_3d = STABLE_GetOrientation();
-
     OLED_Print(68, 0, "COMPASS");
-
     snprintf(buf, sizeof(buf), "%3.0f deg", s_current_yaw);
     OLED_Print(68, 13, buf);
-
     snprintf(buf, sizeof(buf), "P: %2.0f", current_3d.pitch);
     OLED_Print(68, 30, buf);
-
     snprintf(buf, sizeof(buf), "R: %2.0f", current_3d.roll);
     OLED_Print(68, 40, buf);
 
-    /* Grab the Captain's Current Command */
-        const char* state_str = "IDLE";
-        if (s_current_cmd == CMD_DRIVE_FORWARD)     state_str = "SWEEPING";
-        else if (s_current_cmd == CMD_TURN_LEFT)    state_str = "TURNING L";
-        else if (s_current_cmd == CMD_TURN_RIGHT)   state_str = "TURNING R";
-        else if (s_current_cmd == CMD_STOP)         state_str = "STOPPED";
-
-        /* Display the Action Status */
-        //OLED_Print(68, 26, "ACT:");
-        OLED_Print(68, 55, state_str);
+	const char* state_str = "IDLE";
+	if (s_current_cmd == CMD_DRIVE_FORWARD)     state_str = "SWEEPING";
+	else if (s_current_cmd == CMD_TURN_LEFT)    state_str = "TURNING L";
+	else if (s_current_cmd == CMD_TURN_RIGHT)   state_str = "TURNING R";
+	else if (s_current_cmd == CMD_STOP)         state_str = "STOPPED";
+	OLED_Print(68, 55, state_str);
 
     OLED_Update();
 }
 
+/* ═══════════════════════════════════════════════════════════════ */
+/* MAP DISPLAY PAGE (2)                                            */
+/* ═══════════════════════════════════════════════════════════════ */
 static void render_map_page(void)
 {
     OLED_Clear();
@@ -223,19 +237,43 @@ static void render_map_page(void)
     OLED_Print(68, 25, buf);
 
     /* Grab the Captain's Current Command */
-        const char* state_str = "IDLE";
-        if (s_current_cmd == CMD_DRIVE_FORWARD)     state_str = "SWEEPING";
-        else if (s_current_cmd == CMD_TURN_LEFT)    state_str = "TURNING L";
-        else if (s_current_cmd == CMD_TURN_RIGHT)   state_str = "TURNING R";
-        else if (s_current_cmd == CMD_STOP)         state_str = "STOPPED";
+	const char* state_str = "IDLE";
+	if (s_current_cmd == CMD_DRIVE_FORWARD)     state_str = "SWEEPING";
+	else if (s_current_cmd == CMD_TURN_LEFT)    state_str = "TURNING L";
+	else if (s_current_cmd == CMD_TURN_RIGHT)   state_str = "TURNING R";
+	else if (s_current_cmd == CMD_STOP)         state_str = "STOPPED";
+	OLED_Print(68, 55, state_str);
 
-        /* Display the Action Status */
-        //OLED_Print(68, 26, "ACT:");
-        OLED_Print(68, 55, state_str);
+	snprintf(buf, sizeof(buf), "%3.0f deg", s_current_yaw);
+	OLED_Print(68, 45, buf);
 
-        snprintf(buf, sizeof(buf), "%3.0f deg", s_current_yaw);
-        OLED_Print(68, 45, buf);
+    OLED_Update();
+}
 
+/* ═══════════════════════════════════════════════════════════════ */
+/* WI-FI / NETWORK PAGE (3)                                        */
+/* ═══════════════════════════════════════════════════════════════ */
+static void render_wifi_page(void) {
+    OLED_Clear();
+    OLED_Print(0, 0, "── MOPPY NETWORK ──");
+
+    OLED_Print(0, 20, "ESP-01S Status:");
+    if (esp_is_ready) {
+        OLED_Print(90, 20, "READY");
+    } else {
+        OLED_Print(90, 20, "ERROR");
+    }
+
+    OLED_Print(0, 32, "Wi-Fi Link:");
+    if (wifi_is_connected) {
+        OLED_Print(90, 32, "ONLINE");
+        OLED_Print(0, 48, "IP Address:");
+        OLED_Print(0, 56, current_ip);
+    } else {
+        OLED_Print(90, 32, "OFFLINE");
+        OLED_Print(0, 48, "IP Address:");
+        OLED_Print(0, 56, "Not Assigned");
+    }
     OLED_Update();
 }
 
@@ -246,33 +284,84 @@ void GENERAL_Init(void)
 {
     OLED_Init(&hi2c2);
     OLED_Clear();
-    OLED_Print(16, 20, "Floor Robot");
-
-    /* IMPORTANT WARNING FOR THE USER ON THE SCREEN */
-    OLED_Print(0, 40, "DO NOT MOVE!");
-    OLED_Print(0, 50, "Calibrating IMU...");
+    OLED_Print(16, 10, "Moppy Cleaner");
+    OLED_Print(0, 30, "DO NOT MOVE!");
+    OLED_Print(0, 45, "Calibrating IMU...");
     OLED_Update();
 
-    /* Boot up the IMU and Compass */
     BTNS_Init();
     MPU6050_Init();
     HMC5883L_Init();
     STABLE_Init();
-
-    /* NEW: Initialize the map and odometry at (15.0m, 15.0m) */
 	ODOM_Init();
 	Map_Init(&g_map);
-
-    //COVERAGE_Init();
-
     LIDAR_Init();
     MOTOR_Init();
     MOTORPWM_Init();
     MOTOR_WakeAll();
 
     HAL_Delay(500);
+
     OLED_Clear();
-    OLED_Update();
+	OLED_Print(0, 0, "WI-FI BRIDGE");
+	OLED_Print(0, 20, "Init ESP-01S");
+	OLED_Update();
+
+	if (WIFI_Init()) {
+		OLED_Print(95, 20, "OK");
+		esp_is_ready = 1;
+		OLED_Update();
+	} else {
+		OLED_Print(95, 20, "FAIL");
+		esp_is_ready = 0;
+		OLED_Update();
+		HAL_Delay(2000);
+		return; /* Skip AP lock cycle if module is un-responsive */
+	}
+
+	/* Connect to designated Access Point */
+	OLED_Print(0, 35, "Connecting AP...");
+	OLED_Update();
+
+	/* Tries Primary, shifts dynamically to Fallback if needed */
+	if (WIFI_Connect(WIFI_SSID_1, WIFI_PASS_1)) {
+		OLED_Print(0, 48, "Connected to AP 1!");
+		wifi_is_connected = 1;
+	} else {
+		WIFI_Disconnect();
+		HAL_Delay(500);
+		if (WIFI_Connect(WIFI_SSID_2, WIFI_PASS_2)) {
+			OLED_Print(0, 48, "Connected to AP 2!");
+			wifi_is_connected = 1;
+		} else {
+			OLED_Print(0, 48, "APs Failed. Solo Mode");
+			wifi_is_connected = 0;
+		}
+	}
+	OLED_Update();
+	HAL_Delay(500);
+
+	/* Fetch Host IP and open telemetry socket channel */
+	if (wifi_is_connected) {
+		WIFI_GetIP(current_ip);
+		OLED_Clear();
+		OLED_Print(0, 0, "WI-FI BRIDGE");
+		OLED_Print(0, 20, "IP obtained.");
+		OLED_Print(0, 32, current_ip);
+		OLED_Print(0, 48, "Binding UDP socket");
+		OLED_Update();
+
+		if (WIFI_StartUDP(PC_IP, UDP_PORT)) {
+			OLED_Print(0, 56, "UDP Ready!");
+		} else {
+			OLED_Print(0, 56, "Socket Failure");
+		}
+		OLED_Update();
+		HAL_Delay(1000);
+	}
+
+	OLED_Clear();
+	OLED_Update();
 
     s_last_logic_ms = HAL_GetTick();
     s_last_lidar_ms = HAL_GetTick();
@@ -286,22 +375,23 @@ void GENERAL_Update(void)
 {
     uint32_t now = HAL_GetTick();
 
-    static int s_first_run = 1;
-
-    /* ── 1. Autonomous Loop (10 ms period = 100 Hz) ──────────── */
+    /* 1. Autonomous Loop (10 ms period = 100 Hz) ──────────── */
     if ((now - s_last_logic_ms) >= 10) {
         s_last_logic_ms = now;
 
-        /* A. Read Buttons for UI Changes! */
+        /* 1.1 Watch button press to increment across 4 distinct pages */
         BTNS_Update();
         if (BTNS_Get_OLEDPage() == BTN_PRESSED) {
-            s_current_page = (s_current_page + 1) % 3;
+            s_current_page = (s_current_page + 1) % 4;
         }
 
-        /* B. Read IMU */
+        /* 1.2 Fetch Navigation IMU Readings */
         MPU6050_RawData imu;
         HMC5883L_RawData mag;
         if (MPU6050_ReadRaw(&imu) == HAL_OK) {
+
+        	s_last_imu_phys = MPU6050_GetPhysical(&imu);
+
             HMC5883L_ReadRaw(&mag);
             STABLE_Update(&imu, &mag, 0.01f);
             s_current_yaw = STABLE_GetOrientation().yaw;
@@ -312,7 +402,7 @@ void GENERAL_Update(void)
 			s_first_run = 0;
 		}
 
-        /* C. Evaluate Obstacles */
+        /* 1.3 Check Sensor Array Blocks */
         int obs_F = (s_lidar_hits[0] >= 2);
         int obs_R = (s_lidar_hits[1] >= 2);
         int obs_B = (s_lidar_hits[2] >= 2);
@@ -321,44 +411,60 @@ void GENERAL_Update(void)
         int left_pwm = 0;
         int right_pwm = 0;
 
-        /* D. MASTER LOGIC (The Captain & The Driver) */
+        /* 1.4 MASTER LOGIC (The Captain & The Driver) */
         RobotPose pose = ODOM_GetPose();
         float commanded_yaw = 0.0f;
 
-        /* 1. Ask the Captain for the Boustrophedon plan! */
+        /* 1.5 Generate coverage tracking route profiles */
         s_current_cmd = COVERAGE_Update(pose, obs_F, obs_R, obs_L, &commanded_yaw);
 
-        /* 2. The Driver executes the plan */
         if (s_current_cmd == CMD_DRIVE_FORWARD) {
-            if (obs_F) {
-                /* SAFETY OVERRIDE: Human stepped in front! Slam brakes! */
-                left_pwm = 0;
-                right_pwm = 0;
-            } else {
-                /* ── IMU HEADING LOCK (Straight Line Assist) ── */
-                float heading_error = angle_diff(commanded_yaw, s_current_yaw);
+			if (obs_F) {
+				/* SAFETY OVERRIDE: Human stepped in front! Slam brakes! */
+				left_pwm = 0;
+				right_pwm = 0;
+			} else {
+				/* ── TEMPORARY OPEN-LOOP CONTROL ── */
+				/* Since the IMU is unlevel and we lack encoders, we use a static bias. */
 
-                /* Apply simple Proportional correction */
-                int correction = (int)(heading_error * 2.0f);
+				int base_speed = 300;
 
-                left_pwm  = 300 + correction;
-                right_pwm = 300 - correction;
+				/* TUNE THIS VALUE!
+				   If the robot drifts LEFT  -> Right motor is too fast -> Make this negative (e.g., -20)
+				   If the robot drifts RIGHT -> Left motor is too fast  -> Make this positive (e.g., +20) */
+				int right_motor_offset = 0;
 
-                /* Clamp PWM limits */
-                if (left_pwm > 400) left_pwm = 400;
-                if (left_pwm < 200) left_pwm = 200;
-                if (right_pwm > 400) right_pwm = 400;
-                if (right_pwm < 200) right_pwm = 200;
-            }
-        }
-        else if (s_current_cmd == CMD_TURN_RIGHT) {
-            left_pwm = 350; right_pwm = -350;
-            s_target_yaw = commanded_yaw;
-        }
-        else if (s_current_cmd == CMD_TURN_LEFT) {
-            left_pwm = -350; right_pwm = 350;
-            s_target_yaw = commanded_yaw;
-        }
+				left_pwm  = base_speed;
+				right_pwm = base_speed + right_motor_offset;
+
+				/* Clamp PWM limits just in case */
+				if (left_pwm > 400) left_pwm = 400;
+				if (right_pwm > 400) right_pwm = 400;
+
+				/* Reset the IMU memory so it doesn't explode in the background */
+				s_heading_integral = 0.0f;
+			}
+		}
+        else if (s_current_cmd == CMD_TURN_RIGHT || s_current_cmd == CMD_TURN_LEFT) {
+			/* PROPORTIONAL TURN CONTROLLER ── */
+			float heading_error = angle_diff(commanded_yaw, s_current_yaw);
+
+			/* Calculate speed based on how far we have left to turn.
+			   Gain of 2.5 + Base speed of 180 to overcome friction. */
+			int turn_speed = (int)(fabsf(heading_error) * 2.5f) + 180;
+
+			/* Clamp the speeds so it doesn't spin too fast or stall */
+			if (turn_speed > 350) turn_speed = 350;
+			if (turn_speed < 180) turn_speed = 180;
+
+			/* Apply the speed based on the Captain's direction */
+			if (s_current_cmd == CMD_TURN_RIGHT) {
+				left_pwm = turn_speed; right_pwm = -turn_speed;
+			} else {
+				left_pwm = -turn_speed; right_pwm = turn_speed;
+			}
+			s_target_yaw = commanded_yaw;
+		}
         else {
             /* CMD_STOP */
             left_pwm = 0; right_pwm = 0;
@@ -373,7 +479,7 @@ void GENERAL_Update(void)
         s_disp_l_pwm = left_pwm;
         s_disp_r_pwm = right_pwm;
 
-        /* E. ODOMETRY & MAPPING (The Kinematic Simulator) */
+        /* 1.6 Step Kinematics Physics Engine */
         s_is_moving = (left_pwm != 0 || right_pwm != 0);
 
         if (s_is_moving) {
@@ -407,7 +513,7 @@ void GENERAL_Update(void)
         }
     }
 
-    /* ── 2. LiDAR round-robin ──── */
+    /* ── 2. LiDAR Scanning Round-Robin (35 ms Execution Interval) ── */
     if ((now - s_last_lidar_ms) >= 35) {
         s_last_lidar_ms = now;
         uint16_t dist = LIDAR_GetFilteredDistance(s_lidar_idx);
@@ -433,16 +539,22 @@ void GENERAL_Update(void)
         s_lidar_idx = (s_lidar_idx + 1) % 4;
     }
 
-    /* ── 3. OLED refresh ─────────────────────── */
-        if ((now - s_last_oled_ms) >= 200) {
-            s_last_oled_ms = now;
+    /* ── 3. OLED Refresh & Wi-Fi Transmission Loop (200 ms Loop) ── */
+		if ((now - s_last_oled_ms) >= 200) {
+			s_last_oled_ms = now;
 
-            if (s_current_page == 0) {
-                render_dashboard_page();
-            } else if (s_current_page == 1) {
-                render_compass_page();
-            } else {
-                render_map_page(); /* <--- Add this */
-            }
-        }
+			/* Automatically transmit telemetry via JSON to PC Dashboard */
+			send_telemetry_wifi();
+
+			/* Screen state machine rendering routes */
+			if (s_current_page == 0) {
+				render_dashboard_page();
+			} else if (s_current_page == 1) {
+				render_compass_page();
+			} else if (s_current_page == 2) {
+				render_map_page();
+			} else {
+				render_wifi_page(); /* Page 3 handles network status info */
+			}
+		}
 }

@@ -665,7 +665,7 @@ static void MX_GPIO_Init(void)
                           |M3_AIN2_Pin|XSHUT4_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(XSHUT2_GPIO_Port, XSHUT2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, XSHUT2_Pin|ESP_IO0_Pin|ESP_RST_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pins : M5_AIN1_Pin M5_AIN2_Pin M6_BIN1_Pin M6_BIN2_Pin
                            XSHUT3_Pin */
@@ -707,12 +707,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : XSHUT2_Pin */
-  GPIO_InitStruct.Pin = XSHUT2_Pin;
+  /*Configure GPIO pins : XSHUT2_Pin ESP_IO0_Pin ESP_RST_Pin */
+  GPIO_InitStruct.Pin = XSHUT2_Pin|ESP_IO0_Pin|ESP_RST_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(XSHUT2_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : IR1_EXTI0_Pin IR2_EXTI1_Pin IR3_EXTI3_Pin IR4_EXTI4_Pin */
   GPIO_InitStruct.Pin = IR1_EXTI0_Pin|IR2_EXTI1_Pin|IR3_EXTI3_Pin|IR4_EXTI4_Pin;

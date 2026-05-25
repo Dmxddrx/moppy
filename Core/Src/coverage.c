@@ -78,7 +78,7 @@ CoverageCmd COVERAGE_Update(RobotPose pose, int obs_F, int obs_R, int obs_L, flo
             cmd = (s_turn_dir == 1) ? CMD_TURN_RIGHT : CMD_TURN_LEFT;
             *out_target_yaw = s_target_yaw;
 
-            if (fabsf(angle_diff(s_target_yaw, pose.theta)) < 5.0f) {
+            if (fabsf(angle_diff(s_target_yaw, pose.theta)) < 2.0f) {
                 s_state = LAWN_STEPPING;
                 s_step_start_x = pose.x;
                 s_step_start_y = pose.y;
@@ -111,7 +111,7 @@ CoverageCmd COVERAGE_Update(RobotPose pose, int obs_F, int obs_R, int obs_L, flo
             cmd = (s_turn_dir == 1) ? CMD_TURN_RIGHT : CMD_TURN_LEFT;
             *out_target_yaw = s_target_yaw;
 
-            if (fabsf(angle_diff(s_target_yaw, pose.theta)) < 5.0f) {
+            if (fabsf(angle_diff(s_target_yaw, pose.theta)) < 2.0f) {
                 s_row_heading = s_target_yaw; /* Lock the new forward heading */
                 s_turn_dir *= -1; /* Normal snake flip */
                 s_state = LAWN_SWEEPING;

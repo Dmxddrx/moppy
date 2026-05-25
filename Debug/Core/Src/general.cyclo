@@ -1,7 +1,9 @@
-../Core/Src/general.c:43:14:angle_diff	3
-../Core/Src/general.c:53:13:format_dist_mm	4
-../Core/Src/general.c:66:13:render_dashboard_page	5
-../Core/Src/general.c:112:13:render_compass_page	5
-../Core/Src/general.c:168:13:render_map_page	11
-../Core/Src/general.c:245:6:GENERAL_Init	1
-../Core/Src/general.c:285:6:GENERAL_Update	40
+../Core/Src/general.c:52:14:angle_diff	3
+../Core/Src/general.c:62:13:send_telemetry_wifi	2
+../Core/Src/general.c:81:13:format_dist_mm	4
+../Core/Src/general.c:94:13:render_dashboard_page	5
+../Core/Src/general.c:140:13:render_compass_page	5
+../Core/Src/general.c:182:13:render_map_page	11
+../Core/Src/general.c:256:13:render_wifi_page	3
+../Core/Src/general.c:283:6:GENERAL_Init	6
+../Core/Src/general.c:374:6:GENERAL_Update	42

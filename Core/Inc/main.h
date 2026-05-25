@@ -115,6 +115,10 @@ void Error_Handler(void);
 #define ESP_RX_GPIO_Port GPIOA
 #define ESP_TX_Pin GPIO_PIN_10
 #define ESP_TX_GPIO_Port GPIOA
+#define ESP_IO0_Pin GPIO_PIN_11
+#define ESP_IO0_GPIO_Port GPIOA
+#define ESP_RST_Pin GPIO_PIN_12
+#define ESP_RST_GPIO_Port GPIOA
 #define IR1_EXTI0_Pin GPIO_PIN_0
 #define IR1_EXTI0_GPIO_Port GPIOD
 #define IR2_EXTI1_Pin GPIO_PIN_1

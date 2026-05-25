@@ -72,8 +72,8 @@ uint8_t VL53L0X_Init(VL53L0X_Dev *dev, I2C_HandleTypeDef *hi2c, uint8_t initial_
     writeReg(dev, 0x77, 0x00); writeReg(dev, 0xFF, 0x01); writeReg(dev, 0x0D, 0x01);
     writeReg(dev, 0xFF, 0x00); writeReg(dev, 0x80, 0x01); writeReg(dev, 0x01, 0xF8);
     writeReg(dev, 0xFF, 0x01); writeReg(dev, 0x8E, 0x01); writeReg(dev, 0x00, 0x01);
-    writeReg(dev, 0xFF, 0x00); writeReg(dev, 0x80, 0x00);
-    /* ---------------------------------------------------- */
+    writeReg(dev, 0xFF, 0x00); writeReg(dev, 0x80, 0x00);*/
+
 
     writeReg(dev, 0x0A, 0x04);
     writeReg(dev, 0x84, readReg(dev, 0x84) & ~0x10);
