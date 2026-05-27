@@ -30,8 +30,8 @@ static float     s_speed = 0.0f;   /* scalar m/s                  */
 void ODOM_Init(void)
 {
     /* Start robot at centre of the 100×100 map (15.0 m, 15.0 m)  */
-    s_pose.x     = 15.0f;
-    s_pose.y     = 15.0f;
+    s_pose.x     = 0.0f;
+    s_pose.y     = 0.0f;
     s_pose.theta = 0.0f;
     s_vx = s_vy = s_speed = 0.0f;
 }
@@ -99,10 +99,10 @@ void ODOM_UpdateIMU(const MPU6050_RawData *imu,
     s_pose.y += s_vy * dt;
 
     /* Clamp position to valid map range (0–30 m)                  */
-    if (s_pose.x < 0.0f)  s_pose.x = 0.0f;
-    if (s_pose.y < 0.0f)  s_pose.y = 0.0f;
-    if (s_pose.x > 30.0f) s_pose.x = 30.0f;
-    if (s_pose.y > 30.0f) s_pose.y = 30.0f;
+    if (s_pose.x < -15.0f)  s_pose.x = -15.0f;
+	if (s_pose.y < -15.0f)  s_pose.y = -15.0f;
+	if (s_pose.x > 15.0f) s_pose.x = 15.0f;
+	if (s_pose.y > 15.0f) s_pose.y = 15.0f;
 }
 
 /* ─────────────────────────────────────────────────────────────── */
@@ -136,9 +136,8 @@ void ODOM_UpdateEncoders(float v_left, float v_right, float yaw_deg, float dt)
     /* 2. Calculate distance traveled in this tick */
     float distance = s_speed * dt;
 
-    /* IMPROVEMENT: Apply the Yaw Blend (formerly slam_lite) directly here */
-	#define YAW_BLEND 0.05f
-	s_pose.theta = (s_pose.theta * (1.0f - YAW_BLEND)) + (yaw_deg * YAW_BLEND);
+	/* 3. FIXED: Trust the compass directly. No flawed averaging! */
+	s_pose.theta = yaw_deg;
 
 	float yaw_rad = s_pose.theta * DEG_TO_RAD;
 
@@ -147,8 +146,8 @@ void ODOM_UpdateEncoders(float v_left, float v_right, float yaw_deg, float dt)
     s_pose.y += distance * cosf(yaw_rad);
 
     /* 5. Clamp to map boundaries (30x30 meters) */
-    if (s_pose.x < 0.0f)  s_pose.x = 0.0f;
-    if (s_pose.x > 30.0f) s_pose.x = 30.0f;
-    if (s_pose.y < 0.0f)  s_pose.y = 0.0f;
-    if (s_pose.y > 30.0f) s_pose.y = 30.0f;
+    if (s_pose.x < -15.0f)  s_pose.x = -15.0f;
+	if (s_pose.x > 15.0f)   s_pose.x = 15.0f;
+	if (s_pose.y < -15.0f)  s_pose.y = -15.0f;
+	if (s_pose.y > 15.0f)   s_pose.y = 15.0f;
 }

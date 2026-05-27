@@ -35,12 +35,12 @@ void HMC5883L_Init(void)
 {
     HAL_Delay(10);
     /* CRA: 8 samples avg, 15 Hz output, normal measurement       */
-    WriteReg(REG_CONFIG_A, 0x70);
+    WriteReg(REG_CONFIG_A, 0x78);
     /* CRB: gain = 1090 LSB/Gauss (default ±1.3 Ga range)         */
     WriteReg(REG_CONFIG_B, 0x20);
     /* Mode: continuous measurement                                */
     WriteReg(REG_MODE, 0x00);
-    HAL_Delay(67);   /* wait one measurement cycle (15 Hz → ~67 ms) */
+    HAL_Delay(15);   /* wait one measurement cycle (75 Hz → ~13 ms) */
 }
 
 /* ─────────────────────────────────────────────────────────────── */
@@ -62,9 +62,28 @@ void HMC5883L_ReadRaw(HMC5883L_RawData *data)
 /* ─────────────────────────────────────────────────────────────── */
 float HMC5883L_GetHeading(float mx, float my)
 {
-    float heading = atan2f(-my, mx) * (180.0f / 3.14159265f);
+    /* 1. Hard Iron Calibration (Offsets) */
+    float offset_x = 59.0f;
+    float offset_y = -96.0f;
+
+    /* 2. Soft Iron Calibration (Scaling) */
+    float scale_x = 0.982f;
+    float scale_y = 1.019f;
+
+    /* Step A: Remove Hard Iron distortion (shift to center) */
+    float cal_mx = mx - offset_x;
+    float cal_my = my - offset_y;
+
+    /* Step B: Remove Soft Iron distortion (squish into a perfect circle) */
+    cal_mx *= scale_x;
+    cal_my *= scale_y;
+
+    /* Step C: Calculate the true heading */
+    float heading = atan2f(-cal_my, cal_mx) * (180.0f / 3.14159265f);
+
     if (heading < 0.0f)    heading += 360.0f;
     if (heading >= 360.0f) heading -= 360.0f;
+
     return heading;
 }
 

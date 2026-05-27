@@ -140,19 +140,15 @@ int8_t WIFI_SendUDPData(char* data) {
     WIFI_SendCommand(cmd);
 
     // 2. Wait for the '>' prompt from the ESP indicating it is ready
-    if (WIFI_WaitForResponse(">", 50)) {
+    if (WIFI_WaitForResponse(">", 5)) {
 
         // 3. Send the actual sensor data string
         WIFI_SendCommand(data);
 
         // 4. Wait for confirmation that it was sent over Wi-Fi
-        if (WIFI_WaitForResponse("SEND OK", 50)) {
+        if (WIFI_WaitForResponse("SEND OK", 5)) {
             return 1; // Success
         }
     }
     return 0; // Failed
 }
-
-
-
-

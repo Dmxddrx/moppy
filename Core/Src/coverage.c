@@ -1,39 +1,23 @@
 #include "coverage.h"
 #include <math.h>
 
-/* The Lawnmower Sequence States */
+/* ── Reactive Navigation State Machine ────────────────────── */
 typedef enum {
-    LAWN_SWEEPING,
-    LAWN_PAUSE,
-    LAWN_TURN_1,
-    LAWN_STEPPING,
-    LAWN_TURN_2,
-    LAWN_STOPPED
-} LawnState;
+    NAV_FORWARD,
+    NAV_REVERSE,
+    NAV_TURN_RIGHT_180,
+    NAV_TURN_LEFT_180,
+    NAV_TURN_RIGHT_90,
+    NAV_TURN_LEFT_90,
+	NAV_TRAPPED
+} NavState;
 
-static LawnState s_state = LAWN_SWEEPING;
-static int s_turn_dir = 1; /* 1 = Right U-Turn, -1 = Left U-Turn */
-
-static float s_target_yaw = 0.0f;
-
-static float s_row_heading = 0.0f;
-
-/* For tracking the precise 15cm (0.15m) step */
-static float s_step_start_x = 0.0f;
-static float s_step_start_y = 0.0f;
-
-/* Delay timer for smooth transitions */
-static uint32_t s_pause_ticks = 0;
+static NavState s_nav_state = NAV_FORWARD;
+static float s_target_heading = 0.0f;
 
 /* ═══════════════════════════════════════════════════════════════ */
 /* HELPER MATH                                                     */
 /* ═══════════════════════════════════════════════════════════════ */
-static float wrap360(float a) {
-    while(a >= 360.0f) a -= 360.0f;
-    while(a <    0.0f) a += 360.0f;
-    return a;
-}
-
 static float angle_diff(float target, float current) {
     float d = target - current;
     while(d >  180.0f) d -= 360.0f;
@@ -45,81 +29,83 @@ static float angle_diff(float target, float current) {
 /* PUBLIC FUNCTIONS                                                */
 /* ═══════════════════════════════════════════════════════════════ */
 void COVERAGE_Init(float start_heading) {
-    s_state = LAWN_SWEEPING;
-    s_turn_dir = 1; /* Start by turning right at the very first wall */
-    s_row_heading = start_heading; //Lock onto our boot direction!
+    s_nav_state = NAV_FORWARD;
+    s_target_heading = start_heading;
 }
 
-CoverageCmd COVERAGE_Update(RobotPose pose, int obs_F, int obs_R, int obs_L, float* out_target_yaw) {
+CoverageCmd COVERAGE_Update(float current_yaw, int obs_F, int obs_R, int obs_L, int obs_B, float* out_target_yaw) {
     CoverageCmd cmd = CMD_DRIVE_FORWARD;
 
-    switch (s_state) {
+    switch (s_nav_state) {
 
-        case LAWN_SWEEPING:
-            *out_target_yaw = s_row_heading; /* IMU Heading Lock! */
-            if (obs_F) {
-                s_state = LAWN_PAUSE;
-                s_pause_ticks = 0;
-            } else {
-                cmd = CMD_DRIVE_FORWARD;
-            }
-            break;
-
-        case LAWN_PAUSE:
-            cmd = CMD_STOP;
-            s_pause_ticks++;
-            if (s_pause_ticks > 50) {
-                s_state = LAWN_TURN_1;
-                s_target_yaw = wrap360(s_row_heading + 90.0f * (float)s_turn_dir);
-            }
-            break;
-
-        case LAWN_TURN_1:
-            cmd = (s_turn_dir == 1) ? CMD_TURN_RIGHT : CMD_TURN_LEFT;
-            *out_target_yaw = s_target_yaw;
-
-            if (fabsf(angle_diff(s_target_yaw, pose.theta)) < 2.0f) {
-                s_state = LAWN_STEPPING;
-                s_step_start_x = pose.x;
-                s_step_start_y = pose.y;
-                s_row_heading = s_target_yaw; /* Lock the new heading for the shift */
-            }
-            break;
-
-        case LAWN_STEPPING:
+        case NAV_FORWARD:
             cmd = CMD_DRIVE_FORWARD;
-            *out_target_yaw = s_row_heading; /* IMU Heading Lock for the shift! */
+            *out_target_yaw = s_target_heading; /* Keep driving straight */
 
-            float dx = pose.x - s_step_start_x;
-            float dy = pose.y - s_step_start_y;
-            float dist = sqrtf(dx*dx + dy*dy);
-
-            if (obs_F) {
-                /* YOUR OLD CODE: The Mid-Shift Abort! */
-                s_state = LAWN_TURN_2;
-                s_target_yaw = wrap360(s_row_heading + 90.0f * (float)s_turn_dir);
-                s_turn_dir *= -1; /* Flip direction early to escape the corner */
+            if (obs_F && obs_L && obs_R && obs_B) {
+				s_nav_state = NAV_TRAPPED; // <--- This triggers the trap state!
+			}
+            /* Obstacle Logic Priority */
+            else if (obs_F && obs_L && obs_R) {
+                s_nav_state = NAV_REVERSE;
             }
-            else if (dist >= 0.15f) {
-                /* Normal 15cm shift complete */
-                s_state = LAWN_TURN_2;
-                s_target_yaw = wrap360(s_row_heading + 90.0f * (float)s_turn_dir);
+            else if (obs_F && obs_R) {
+                s_nav_state = NAV_TURN_LEFT_180;
+                /* Left turn = Up Counter (+180) */
+                s_target_heading = fmodf(current_yaw + 180.0f, 360.0f);
             }
-            break;
-
-        case LAWN_TURN_2:
-            cmd = (s_turn_dir == 1) ? CMD_TURN_RIGHT : CMD_TURN_LEFT;
-            *out_target_yaw = s_target_yaw;
-
-            if (fabsf(angle_diff(s_target_yaw, pose.theta)) < 2.0f) {
-                s_row_heading = s_target_yaw; /* Lock the new forward heading */
-                s_turn_dir *= -1; /* Normal snake flip */
-                s_state = LAWN_SWEEPING;
+            else if (obs_F && obs_L) {
+                s_nav_state = NAV_TURN_RIGHT_180;
+                /* Right turn = Down Counter. Add 360 to prevent negative math! */
+                s_target_heading = fmodf(current_yaw + 360.0f - 180.0f, 360.0f);
+            }
+            else if (obs_F) {
+                s_nav_state = NAV_TURN_RIGHT_180;
+                s_target_heading = fmodf(current_yaw + 360.0f - 180.0f, 360.0f);
             }
             break;
 
-        case LAWN_STOPPED:
-            cmd = CMD_STOP;
+        case NAV_REVERSE:
+            cmd = CMD_REVERSE;
+            *out_target_yaw = s_target_heading;
+
+            if (!obs_L) {
+                s_nav_state = NAV_TURN_LEFT_90;
+                s_target_heading = fmodf(current_yaw + 90.0f, 360.0f);
+            }
+            else if (!obs_R) {
+                s_nav_state = NAV_TURN_RIGHT_90;
+                s_target_heading = fmodf(current_yaw + 360.0f - 90.0f, 360.0f);
+            }
+            break;
+        case NAV_TRAPPED:
+			/* Halt all motors and wait for a human or object to move out of the way */
+			cmd = CMD_STOP;
+			*out_target_yaw = s_target_heading;
+
+			if (!obs_F || !obs_L || !obs_R || !obs_B) {
+				/* An opening appeared! Go back to Forward mode to recalculate the route */
+				s_nav_state = NAV_FORWARD;
+			}
+			break;
+
+        case NAV_TURN_RIGHT_180:
+        case NAV_TURN_LEFT_180:
+        case NAV_TURN_RIGHT_90:
+        case NAV_TURN_LEFT_90:
+            /* Output the correct turning command to the hardware driver */
+            if (s_nav_state == NAV_TURN_LEFT_90 || s_nav_state == NAV_TURN_LEFT_180) {
+                cmd = CMD_TURN_LEFT;
+            } else {
+                cmd = CMD_TURN_RIGHT;
+            }
+
+            *out_target_yaw = s_target_heading;
+
+            /* If the compass is within 3 degrees of target, lock the FSM back to Forward! */
+            if (fabsf(angle_diff(s_target_heading, current_yaw)) <= 3.0f) {
+                s_nav_state = NAV_FORWARD;
+            }
             break;
     }
 

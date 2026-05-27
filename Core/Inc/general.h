@@ -38,10 +38,6 @@
 #define IMU_UPDATE_INTERVAL_MS     10U
 
 
-
-
-
-
 #define WIFI_SSID_1 "Dmx's Note20 Ultra"
 #define WIFI_PASS_1 "11111129"
 

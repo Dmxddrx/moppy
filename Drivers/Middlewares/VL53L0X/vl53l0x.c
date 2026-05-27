@@ -4,10 +4,14 @@
 static void writeReg(VL53L0X_Dev *dev, uint8_t reg, uint8_t value) {
     HAL_I2C_Mem_Write(dev->i2c, dev->address, reg, 1, &value, 1, dev->timeout_ms);
 }
-static void writeReg16Bit(VL53L0X_Dev *dev, uint8_t reg, uint16_t value) {
+
+#if 0
+__attribute__((unused)) static void writeReg16Bit(VL53L0X_Dev *dev, uint8_t reg, uint16_t value) {
     uint8_t buf[2] = { (value >> 8) & 0xFF, value & 0xFF };
     HAL_I2C_Mem_Write(dev->i2c, dev->address, reg, 1, buf, 2, dev->timeout_ms);
 }
+#endif
+
 static uint8_t readReg(VL53L0X_Dev *dev, uint8_t reg) {
     uint8_t value = 0;
     HAL_I2C_Mem_Read(dev->i2c, dev->address, reg, 1, &value, 1, dev->timeout_ms);

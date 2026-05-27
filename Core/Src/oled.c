@@ -65,12 +65,17 @@ void OLED_Print(uint8_t x, uint8_t y, const char *str) {
    ================================================================ */
 void OLED_Update(void)
 {
-    /* Check if I2C bus is stuck before attempting transfer */
-    if(HAL_I2C_GetState(oled_i2c) != HAL_I2C_STATE_READY)
-    {
-        OLED_RecoverBus();
-        return;   /* skip this frame — display will update next tick */
-    }
+	uint32_t start_time = HAL_GetTick();
+
+	    /* 1. Wait patiently for the previous DMA background transfer to finish */
+	    while (HAL_I2C_GetState(oled_i2c) != HAL_I2C_STATE_READY)
+	    {
+	        /* 2. If it takes longer than 50ms, the bus is actually crashed. Recover it! */
+	        if ((HAL_GetTick() - start_time) > 50) {
+	            OLED_RecoverBus();
+	            return;
+	        }
+	    }
 
     SSD1306_UpdateScreen();
 }

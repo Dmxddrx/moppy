@@ -230,16 +230,23 @@ uint8_t SSD1306_Init(void) {
 }
 
 void SSD1306_UpdateScreen(void) {
-	uint8_t m;
+    /* 1. Switch OLED to Horizontal Addressing Mode */
+    SSD1306_WRITECOMMAND(0x20);
+    SSD1306_WRITECOMMAND(0x00);
 
-	for (m = 0; m < 8; m++) {
-		SSD1306_WRITECOMMAND(0xB0 + m);
-		SSD1306_WRITECOMMAND(0x00);
-		SSD1306_WRITECOMMAND(0x10);
+    /* 2. Set the bounding box for the screen */
+    SSD1306_WRITECOMMAND(0x21); /* Column Address */
+    SSD1306_WRITECOMMAND(0x00); /* Start: 0 */
+    SSD1306_WRITECOMMAND(127);  /* End: 127 */
 
-		/* Write multi data */
-		ssd1306_I2C_WriteMulti(SSD1306_I2C_ADDR, 0x40, &SSD1306_Buffer[SSD1306_WIDTH * m], SSD1306_WIDTH);
-	}
+    SSD1306_WRITECOMMAND(0x22); /* Page Address */
+    SSD1306_WRITECOMMAND(0x00); /* Start: Page 0 */
+    SSD1306_WRITECOMMAND(7);    /* End: Page 7 */
+
+    /* 3. Blast the ENTIRE 1,024-byte buffer in the background using DMA!
+       - 0x40 is the OLED control byte meaning "Display Data"
+       - 1 is the memory address size (I2C_MEMADD_SIZE_8BIT) */
+    HAL_I2C_Mem_Write_DMA(&hi2c2, SSD1306_I2C_ADDR, 0x40, 1, SSD1306_Buffer, sizeof(SSD1306_Buffer));
 }
 
 void SSD1306_ToggleInvert(void) {
