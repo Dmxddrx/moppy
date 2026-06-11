@@ -1,4 +1,0 @@
-../Core/Src/motor_pwm.c:35:6:MOTORPWM_Init	1
-../Core/Src/motor_pwm.c:55:6:MOTORPWM_SetOne	7
-../Core/Src/motor_pwm.c:67:6:MOTORPWM_Update	11
-../Core/Src/motor_pwm.c:94:9:MOTORPWM_Get	2

@@ -4,3 +4,6 @@
 ../Drivers/Middlewares/VL53L0X/vl53l0x.c:27:6:VL53L0X_SetAddress	16	static
 ../Drivers/Middlewares/VL53L0X/vl53l0x.c:32:9:VL53L0X_Init	24	static
 ../Drivers/Middlewares/VL53L0X/vl53l0x.c:89:10:VL53L0X_ReadDistance	24	static
+../Drivers/Middlewares/VL53L0X/vl53l0x.c:116:6:VL53L0X_StartSingleShot	16	static
+../Drivers/Middlewares/VL53L0X/vl53l0x.c:128:9:VL53L0X_CheckDataReady	16	static
+../Drivers/Middlewares/VL53L0X/vl53l0x.c:137:10:VL53L0X_GetDistanceResult	24	static

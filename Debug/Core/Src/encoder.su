@@ -1,8 +1,0 @@
-../Core/Src/encoder.c:27:6:ENCODER_Init	8	static
-../Core/Src/encoder.c:42:6:ENCODER_IC_Callback	32	static
-../Core/Src/encoder.c:86:6:ENCODER_Update	16	static
-../Core/Src/encoder.c:114:9:ENCODER_GetCount	16	static
-../Core/Src/encoder.c:120:7:ENCODER_GetSpeed	16	static
-../Core/Src/encoder.c:126:7:ENCODER_GetSpeed_PID	16	static
-../Core/Src/encoder.c:132:12:ENCODER_GetStatus	16	static
-../Core/Src/encoder.c:138:6:ENCODER_Reset	16	static

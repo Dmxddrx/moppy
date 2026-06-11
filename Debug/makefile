@@ -11,9 +11,14 @@ RM := rm -rf
 -include sources.mk
 -include Drivers/STM32F4xx_HAL_Driver/Src/subdir.mk
 -include Drivers/Middlewares/VL53L0X/subdir.mk
--include Drivers/Middlewares/SSD1306/subdir.mk
+-include Drivers/Middlewares/OLED/subdir.mk
 -include Core/Startup/subdir.mk
 -include Core/Src/subdir.mk
+-include Components/UI/subdir.mk
+-include Components/System/subdir.mk
+-include Components/Sensors/subdir.mk
+-include Components/Navigation/subdir.mk
+-include Components/Hardware/subdir.mk
 -include objects.mk
 
 ifneq ($(MAKECMDGOALS),clean)

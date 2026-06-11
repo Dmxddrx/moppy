@@ -30,14 +30,27 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
- ../Core/Inc/general.h ../Core/Inc/mpu6050.h ../Core/Inc/main.h \
- ../Core/Inc/hmc5883l.h ../Core/Inc/encoder.h ../Core/Inc/motor.h \
- ../Core/Inc/motor_pwm.h ../Core/Inc/btns.h ../Core/Inc/oled.h \
- ../Core/Inc/odometry.h ../Core/Inc/mpu6050.h ../Core/Inc/mapping.h \
- ../Core/Inc/ir.h ../Core/Inc/stable.h \
- H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Drivers/Middlewares/SSD1306/fonts.h \
- ../Core/Inc/coverage.h ../Core/Inc/motion.h ../Core/Inc/pid.h \
- ../Core/Inc/wall_follow.h ../Core/Inc/lidar.h ../Core/Inc/wifi.h
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/System/general.h \
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/System/wifi.h \
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Hardware/motor.h \
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Hardware/motor_pwm.h \
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Hardware/encoder.h \
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Hardware/btns.h \
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Sensors/mpu6050.h \
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Sensors/hmc5883l.h \
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Sensors/lidar.h \
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Sensors/ir.h \
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Navigation/odometry.h \
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Navigation/mapping.h \
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Navigation/coverage.h \
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Navigation/odometry.h \
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Navigation/stable.h \
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Navigation/motion.h \
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Navigation/pid.h \
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Navigation/wall_follow.h \
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/UI/oled.h \
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/UI/oledGUI.h \
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Drivers/Middlewares/OLED/fonts.h
 ../Core/Inc/main.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
@@ -70,24 +83,24 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h:
-../Core/Inc/general.h:
-../Core/Inc/mpu6050.h:
-../Core/Inc/main.h:
-../Core/Inc/hmc5883l.h:
-../Core/Inc/encoder.h:
-../Core/Inc/motor.h:
-../Core/Inc/motor_pwm.h:
-../Core/Inc/btns.h:
-../Core/Inc/oled.h:
-../Core/Inc/odometry.h:
-../Core/Inc/mpu6050.h:
-../Core/Inc/mapping.h:
-../Core/Inc/ir.h:
-../Core/Inc/stable.h:
-H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Drivers/Middlewares/SSD1306/fonts.h:
-../Core/Inc/coverage.h:
-../Core/Inc/motion.h:
-../Core/Inc/pid.h:
-../Core/Inc/wall_follow.h:
-../Core/Inc/lidar.h:
-../Core/Inc/wifi.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/System/general.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/System/wifi.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Hardware/motor.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Hardware/motor_pwm.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Hardware/encoder.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Hardware/btns.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Sensors/mpu6050.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Sensors/hmc5883l.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Sensors/lidar.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Sensors/ir.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Navigation/odometry.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Navigation/mapping.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Navigation/coverage.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Navigation/odometry.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Navigation/stable.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Navigation/motion.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Navigation/pid.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Navigation/wall_follow.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/UI/oled.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/UI/oledGUI.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Drivers/Middlewares/OLED/fonts.h:

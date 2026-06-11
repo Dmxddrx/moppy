@@ -1,3 +1,0 @@
-../Core/Src/lidar.c:39:6:LIDAR_Init	64	static
-../Core/Src/lidar.c:83:13:LIDAR_RecoverSensor	16	static
-../Core/Src/lidar.c:107:10:LIDAR_GetFilteredDistance	24	static

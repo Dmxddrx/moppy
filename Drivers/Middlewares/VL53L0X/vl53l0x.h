@@ -16,4 +16,8 @@ void     VL53L0X_SetAddress(VL53L0X_Dev *dev, uint8_t new_addr);
 uint8_t  VL53L0X_Init(VL53L0X_Dev *dev, I2C_HandleTypeDef *hi2c, uint8_t initial_addr);
 uint16_t VL53L0X_ReadDistance(VL53L0X_Dev *dev);
 
+void    VL53L0X_StartSingleShot(VL53L0X_Dev *dev);
+uint8_t VL53L0X_CheckDataReady(VL53L0X_Dev *dev);
+uint16_t VL53L0X_GetDistanceResult(VL53L0X_Dev *dev);
+
 #endif /* VL53L0X_CUSTOM_H */

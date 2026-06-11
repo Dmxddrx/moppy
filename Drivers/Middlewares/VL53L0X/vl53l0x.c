@@ -111,3 +111,31 @@ uint16_t VL53L0X_ReadDistance(VL53L0X_Dev *dev) {
 
     return range;
 }
+
+/* 1. Just start the conversion and leave immediately */
+void VL53L0X_StartSingleShot(VL53L0X_Dev *dev) {
+    writeReg(dev, 0x80, 0x01);
+    writeReg(dev, 0xFF, 0x01);
+    writeReg(dev, 0x00, 0x00);
+    writeReg(dev, 0x91, dev->stop_variable);
+    writeReg(dev, 0x00, 0x01);
+    writeReg(dev, 0xFF, 0x00);
+    writeReg(dev, 0x80, 0x00);
+    writeReg(dev, 0x00, 0x01); /* SYSRANGE_START */
+}
+
+/* 2. Quick non-blocking check of the interrupt status register */
+uint8_t VL53L0X_CheckDataReady(VL53L0X_Dev *dev) {
+    /* If bit 0, 1, or 2 is set, data is ready to read */
+    if ((readReg(dev, 0x13) & 0x07) != 0) {
+        return 1; /* Ready! */
+    }
+    return 0; /* Still measuring in mid-air */
+}
+
+/* 3. Extract the final values once ready */
+uint16_t VL53L0X_GetDistanceResult(VL53L0X_Dev *dev) {
+    uint16_t range = readReg16Bit(dev, 0x14 + 10);
+    writeReg(dev, 0x0B, 0x01); /* SYSTEM_INTERRUPT_CLEAR */
+    return range;
+}

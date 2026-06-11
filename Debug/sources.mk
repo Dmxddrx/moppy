@@ -22,9 +22,14 @@ C_DEPS :=
 
 # Every subdirectory with source files must be described here
 SUBDIRS := \
+Components/Hardware \
+Components/Navigation \
+Components/Sensors \
+Components/System \
+Components/UI \
 Core/Src \
 Core/Startup \
-Drivers/Middlewares/SSD1306 \
+Drivers/Middlewares/OLED \
 Drivers/Middlewares/VL53L0X \
 Drivers/STM32F4xx_HAL_Driver/Src \
 

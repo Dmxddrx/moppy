@@ -1,3 +1,0 @@
-../Core/Src/lidar.c:39:6:LIDAR_Init	4
-../Core/Src/lidar.c:83:13:LIDAR_RecoverSensor	1
-../Core/Src/lidar.c:107:10:LIDAR_GetFilteredDistance	3

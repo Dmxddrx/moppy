@@ -30,7 +30,8 @@ Core/Src/stm32f4xx_it.o: ../Core/Src/stm32f4xx_it.c ../Core/Inc/main.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h \
  ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h \
- ../Core/Inc/stm32f4xx_it.h ../Core/Inc/encoder.h ../Core/Inc/main.h
+ ../Core/Inc/stm32f4xx_it.h \
+ H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Hardware/encoder.h
 ../Core/Inc/main.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal.h:
 ../Core/Inc/stm32f4xx_hal_conf.h:
@@ -64,5 +65,4 @@ Core/Src/stm32f4xx_it.o: ../Core/Src/stm32f4xx_it.c ../Core/Inc/main.h \
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_tim_ex.h:
 ../Drivers/STM32F4xx_HAL_Driver/Inc/stm32f4xx_hal_uart.h:
 ../Core/Inc/stm32f4xx_it.h:
-../Core/Inc/encoder.h:
-../Core/Inc/main.h:
+H:/Programing_Files_IoT/STM32CubeIDE/workspace_2.1.1/STM32F407VET6/Moppy/Components/Hardware/encoder.h:

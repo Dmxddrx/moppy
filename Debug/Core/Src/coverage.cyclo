@@ -1,3 +1,0 @@
-../Core/Src/coverage.c:21:14:angle_diff	3
-../Core/Src/coverage.c:31:6:COVERAGE_Init	1
-../Core/Src/coverage.c:36:13:COVERAGE_Update	26
