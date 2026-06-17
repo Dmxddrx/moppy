@@ -39,9 +39,12 @@ char    current_pc_ip[16] = "0.0.0.0";
 
 /* ── Module-private state ───────────────────────────────────────*/
 static uint32_t s_last_oled_ms = 0;
+static uint32_t s_last_wifi_ms = 0;
 static uint32_t s_last_logic_ms  = 0;
 static uint8_t  s_current_page  = 0;
 
+static int s_bump_detected = 0;
+static int s_is_stuck = 0;
 /* Store RAW uint16_t values (Millimeters) */
 static uint32_t s_last_lidar_ms = 0;
 static uint32_t s_last_async_lidar_ms = 0;
@@ -98,21 +101,44 @@ void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c)
 static void send_telemetry_wifi(void) {
     if (!wifi_is_connected) return;
 
-    char tx_buf[512];
+    static char tx_buf[1024];
+    static uint8_t packet_toggle = 0;
+
     RobotPose pose = ODOM_GetPose();
     Orientation current_3d = STABLE_GetOrientation();
 
-    snprintf(tx_buf, sizeof(tx_buf),
-		"{\"F\":%u, \"R\":%u, \"B\":%u, \"L\":%u, \"yaw\":%.1f, \"X\":%.1f, \"Y\":%.1f, "
-		"\"pwmL\":%d, \"pwmR\":%d, \"cmd\":%d, \"ax\":%.2f, \"ay\":%.2f, \"az\":%.2f, "
-		"\"gx\":%.2f, \"gy\":%.2f, \"gz\":%.2f, \"mx\":%d, \"my\":%d, \"mz\":%d, "
-		"\"head\":%.1f, \"roll\":%.1f, \"pitch\":%.1f}\n",
-		s_lidar_raw[0], s_lidar_raw[1], s_lidar_raw[2], s_lidar_raw[3],
-		s_current_yaw, pose.x, pose.y, s_disp_l_pwm, s_disp_r_pwm, s_current_cmd,
-		s_last_imu_phys.ax, s_last_imu_phys.ay, s_last_imu_phys.az,
-		s_last_imu_phys.gx, s_last_imu_phys.gy, s_last_imu_phys.gz,
-		s_last_mag.mx, s_last_mag.my, s_last_mag.mz,
-		s_current_yaw, current_3d.roll, current_3d.pitch);
+    packet_toggle = !packet_toggle;
+
+    if (packet_toggle == 0) {
+		/* ── PACKET A: KINEMATICS & SENSORS (Physics) ── */
+		snprintf(tx_buf, sizeof(tx_buf),
+			"{\"type\":\"KIN\",\"F\":%u,\"R\":%u,\"B\":%u,\"L\":%u,\"y\":%.1f,\"X\":%.1f,\"Y\":%.1f,"
+			"\"pL\":%d,\"pR\":%d,\"vL\":%.2f,\"vR\":%.2f,\"ax\":%.2f,\"ay\":%.2f,\"az\":%.2f,"
+			"\"gx\":%.2f,\"gy\":%.2f,\"gz\":%.2f,\"mx\":%d,\"my\":%d,\"mz\":%d}\n",
+			s_lidar_raw[0], s_lidar_raw[1], s_lidar_raw[2], s_lidar_raw[3],
+			s_current_yaw, pose.x, pose.y,
+			s_disp_l_pwm, s_disp_r_pwm,
+			ENCODER_GetSpeed(0), ENCODER_GetSpeed(1), /* NEW: Wheel RPM/Speed */
+			s_last_imu_phys.ax, s_last_imu_phys.ay, s_last_imu_phys.az,
+			s_last_imu_phys.gx, s_last_imu_phys.gy, s_last_imu_phys.gz,
+			s_last_mag.mx, s_last_mag.my, s_last_mag.mz);
+
+	} else {
+		/* ── PACKET B: NAVIGATION & AI LOGIC (Brain) ── */
+		snprintf(tx_buf, sizeof(tx_buf),
+			"{\"type\":\"NAV\",\"nav_st\":%d,\"cmd\":%d,\"targ_h\":%.1f,\"ro\":%.1f,\"pi\":%.1f,"
+			"\"bcd_act\":%d,\"bcd_tot\":%d,\"clean\":%lu,\"spd\":%.2f,\"stuck\":%d,\"bump\":%d}\n",
+			COVERAGE_GetNavState(),      /* NEW: Which state are we in? */
+			s_current_cmd,               /* Current motor command */
+			COVERAGE_GetTargetHeading(), /* NEW: Where does the robot WANT to look? */
+			current_3d.roll, current_3d.pitch,
+			COVERAGE_GetActiveBCDCell(), /* NEW: Current rectangle ID */
+			g_map.total_bcd_cells,       /* NEW: Total rectangles found */
+			g_map.cells_cleaned,         /* NEW: Total area painted */
+			ODOM_GetLinearSpeed(),       /* NEW: Robot velocity */
+			s_is_stuck,                    /* NEW: Stuck flag */
+			s_bump_detected);              /* NEW: Hardware bump flag */
+	}
 
 	WIFI_SendUDPData(tx_buf);
 }
@@ -126,80 +152,90 @@ static void send_telemetry_wifi(void) {
 /* LIVE COMPASS DELAY HELPER (Runs motors while updating screen)   */
 /* ═══════════════════════════════════════════════════════════════ */
 static void live_compass_delay(uint32_t delay_ms) {
-		uint32_t start_time = HAL_GetTick();
+    uint32_t start_time = HAL_GetTick();
 
-		while ((HAL_GetTick() - start_time) < delay_ms) {
-			MPU6050_RawData imu;
-			HMC5883L_RawData mag;
+    while ((HAL_GetTick() - start_time) < delay_ms) {
+        MPU6050_RawData imu;
+        HMC5883L_RawData mag;
 
-			/* 1. Read the sensors */
-			if (MPU6050_ReadRaw(&imu) == HAL_OK) {
-				HMC5883L_ReadRaw(&mag);
-				STABLE_Update(&imu, &mag, 0.05f);
-				s_current_yaw = STABLE_GetOrientation().yaw;
-			}
+        /* 1. Read the sensors */
+        if (MPU6050_ReadRaw(&imu) == HAL_OK) {
+            HMC5883L_ReadRaw(&mag);
+            STABLE_Update(&imu, &mag, 0.01f); /* Changed to 0.01f (10ms) */
+            s_current_yaw = STABLE_GetOrientation().yaw;
+        }
 
-			/* 2. Redraw the compass screen with the new yaw */
-			render_compass_page();
-			HAL_Delay(50);
-		}
+        /* 2. NEW: Process the Smooth Motor Ramping! */
+        MOTORPWM_Update();
+
+        /* 3. Redraw the compass screen with the new yaw */
+        render_compass_page();
+
+        /* Loop at exactly 100Hz */
+        HAL_Delay(10);
+    }
 }
 
 /* ═══════════════════════════════════════════════════════════════ */
 /* CLOSED-LOOP TURN TEST HELPER (Proportional Navigation)          */
 /* ═══════════════════════════════════════════════════════════════ */
 static void test_turn_by_angle(float angle_change, int is_left) {
-		/* Let the compass stabilize for a moment before picking our target */
-		for(int i=0; i<5; i++) { live_compass_delay(50); }
+    /* Let the compass stabilize for a moment before picking our target */
+    for(int i=0; i<25; i++) { live_compass_delay(10); }
 
-		float start_yaw = s_current_yaw;
-		float target_yaw;
+    float start_yaw = s_current_yaw;
+    float target_yaw;
 
-		if (is_left) {
-			s_current_cmd = CMD_TURN_LEFT;
-			target_yaw = fmodf(start_yaw + angle_change, 360.0f);
-		} else {
-			s_current_cmd = CMD_TURN_RIGHT;
-			target_yaw = fmodf(start_yaw + 360.0f - angle_change, 360.0f);
-		}
+    if (is_left) {
+        s_current_cmd = CMD_TURN_LEFT;
+        target_yaw = fmodf(start_yaw + angle_change, 360.0f);
+    } else {
+        s_current_cmd = CMD_TURN_RIGHT;
+        target_yaw = fmodf(start_yaw + 360.0f - angle_change, 360.0f);
+    }
 
-		/* Loop until we reach the target angle! */
-		while (1) {
-			MPU6050_RawData imu;
-			HMC5883L_RawData mag;
-			if (MPU6050_ReadRaw(&imu) == HAL_OK) {
-				HMC5883L_ReadRaw(&mag);
-				STABLE_Update(&imu, &mag, 0.05f);
-				s_current_yaw = STABLE_GetOrientation().yaw;
-			}
+    /* Loop until we reach the target angle! */
+    while (1) {
+        MPU6050_RawData imu;
+        HMC5883L_RawData mag;
+        if (MPU6050_ReadRaw(&imu) == HAL_OK) {
+            HMC5883L_ReadRaw(&mag);
+            STABLE_Update(&imu, &mag, 0.01f); /* Changed to 0.01f (10ms) */
+            s_current_yaw = STABLE_GetOrientation().yaw;
+        }
 
-			/* Proportional Control Math */
-			float heading_error = angle_diff(target_yaw, s_current_yaw);
+        /* Proportional Control Math */
+        float heading_error = angle_diff(target_yaw, s_current_yaw);
 
-			/* Stop if we are within 3 degrees of the perfect angle */
-			if (fabsf(heading_error) <= 3.0f) {
-				MOTOR_Set(0, MOTOR_FORWARD, 0);
-				MOTOR_Set(1, MOTOR_FORWARD, 0);
-				s_current_cmd = CMD_STOP;
-				render_compass_page();
-				break;
-			}
+        /* Stop if we are within 3 degrees of the perfect angle */
+        if (fabsf(heading_error) <= 3.0f) {
+            MOTOR_Set(0, MOTOR_FORWARD, 0);
+            MOTOR_Set(1, MOTOR_FORWARD, 0);
+            s_current_cmd = CMD_STOP;
+            render_compass_page();
+            break;
+        }
 
-			/* Proportional Slowdown (Matches your main loop!) */
-			int turn_speed = (int)(fabsf(heading_error) * 2.0f) + 160;
-			if (turn_speed > 300) turn_speed = 300;
+        /* Proportional Slowdown */
+        int turn_speed = (int)(fabsf(heading_error) * 2.0f) + 160;
+        if (turn_speed > 300) turn_speed = 300;
 
-			if (is_left) {
-				MOTOR_Set(0, MOTOR_BACKWARD, turn_speed);
-				MOTOR_Set(1, MOTOR_FORWARD,  turn_speed);
-			} else {
-				MOTOR_Set(0, MOTOR_FORWARD,  turn_speed);
-				MOTOR_Set(1, MOTOR_BACKWARD, turn_speed);
-			}
+        if (is_left) {
+            MOTOR_Set(0, MOTOR_BACKWARD, turn_speed);
+            MOTOR_Set(1, MOTOR_FORWARD,  turn_speed);
+        } else {
+            MOTOR_Set(0, MOTOR_FORWARD,  turn_speed);
+            MOTOR_Set(1, MOTOR_BACKWARD, turn_speed);
+        }
 
-			render_compass_page();
-			HAL_Delay(50);
-		}
+        /* NEW: Push the target speed to the hardware! */
+        MOTORPWM_Update();
+
+        render_compass_page();
+
+        /* Loop at exactly 100Hz */
+        HAL_Delay(10);
+    }
 }
 #endif
 
@@ -292,7 +328,7 @@ void GENERAL_Init(void)
 		s_current_cmd = CMD_STOP;
 		MOTOR_Set(0, MOTOR_FORWARD, 0);
 		MOTOR_Set(1, MOTOR_FORWARD, 0);
-		HAL_Delay(1000);
+		live_compass_delay(1000);
 		/* ═══════════════════════════════════════════════════════════════ */
 #endif
 
@@ -427,28 +463,39 @@ void GENERAL_100Hz_ControlLoop(void) {
 	int obs_L = (s_lidar_hits[3] >= 2);
 
 	/* 3.1 MPU6050 Bump & Stuck Detection */
-	int bump_detected = 0;
-	int is_stuck = 0;
+	s_bump_detected = 0; /* Clear flags at start of loop */
+	s_is_stuck = 0;
 	static uint16_t stuck_timer = 0;
 	static uint16_t blind_timer = 0;
+	static uint8_t bump_debounce = 0;
 
 	if (s_is_moving) {
 		/* NEW: Ignore all G-force spikes for the first 500ms of acceleration */
 		if (blind_timer < 50) {
 			blind_timer++;
+			bump_debounce = 0;
 		} else {
-			/* BUMP DETECTION: Sudden impact spike over ~0.3G (3.0 m/s^2) */
-			if (fabsf(s_last_imu_phys.ax) > 3.0f || fabsf(s_last_imu_phys.ay) > 16.0f) {
-				bump_detected = 1;
+			/* NEW THRESHOLD: Must exceed 10.0 m/s^2 for at least 2 consecutive cycles (20ms) */
+			if (fabsf(s_last_imu_phys.ax) > 10.0f || fabsf(s_last_imu_phys.ay) > 10.0f) {
+				bump_debounce++;
+				if (bump_debounce >= 2) {
+					s_bump_detected = 1;
+				}
+			} else {
+				bump_debounce = 0; /* Reset instantly if the spike was just a 1-tick floor bump */
 			}
 		}
 
+		/* NEW STUCK DETECTION: Ask the Encoders, not the IMU! */
+		float v_left = fabsf(ENCODER_GetSpeed(0));
+		float v_right = fabsf(ENCODER_GetSpeed(1));
+
 		/* STUCK DETECTION: Wheels have power, but IMU detects zero vibration/movement */
-		if (fabsf(s_last_imu_phys.ax) < 0.15f && fabsf(s_last_imu_phys.ay) < 0.15f) {
+		if (v_left < 0.5f && v_right < 0.5f) {
 			stuck_timer++;
 			/* 200 ticks at 100Hz = 2.0 Seconds of being beached */
 			if (stuck_timer > 200) {
-				is_stuck = 1;
+				s_is_stuck = 1;
 			}
 		} else {
 			stuck_timer = 0; /* Reset timer if normal driving vibration returns */
@@ -456,13 +503,14 @@ void GENERAL_100Hz_ControlLoop(void) {
 	} else {
 		stuck_timer = 0;
 		blind_timer = 0; /* Reset blindfold whenever the robot completely stops */
+		bump_debounce = 0;
 	}
 
 	int left_pwm = 0, right_pwm = 0;
 	float commanded_yaw = 0.0f;
 
 	/* 4. Execute Route Plan */
-	s_current_cmd = COVERAGE_Update(s_current_yaw, obs_F, obs_R, obs_L, obs_B, bump_detected, is_stuck, &commanded_yaw);
+	s_current_cmd = COVERAGE_Update(s_current_yaw, obs_F, obs_R, obs_L, obs_B, s_bump_detected, s_is_stuck, &commanded_yaw);
 
 	if (s_current_cmd != s_prev_cmd) {
 		blind_timer = 0;
@@ -511,6 +559,7 @@ void GENERAL_100Hz_ControlLoop(void) {
 	s_disp_r_pwm = right_pwm;
 
 	/* 5. Update Real-World Kinematics via Hardware Encoders */
+	MOTORPWM_Update();
 	s_is_moving = (left_pwm != 0 || right_pwm != 0);
 
 	if (s_is_moving) {
@@ -551,7 +600,7 @@ void GENERAL_Update(void)
 
 		BTNS_Update();
 		if (BTNS_Get_OLEDPage() == BTN_PRESSED) {
-			s_current_page = (s_current_page + 1) % 5;
+			s_current_page = (s_current_page + 1) % 6;
 		}
 
 		/* Trigger next DMA sequence */
@@ -570,14 +619,18 @@ void GENERAL_Update(void)
 		Process_LiDAR_Asynchronous();
 	}
 
-    /* ── 3. OLED Refresh & Wi-Fi Transmission Loop (200 ms Loop) ── */
-	if ((now - s_last_oled_ms) >= 200) {
-		s_last_oled_ms = now;
-
-
+	/* ── 3. Wi-Fi Transmission Loop (50 ms / 20Hz) ── */
+	    if ((now - s_last_wifi_ms) >= 50) {
+		s_last_wifi_ms = now;
 #if WIFI_BRIDGE
         send_telemetry_wifi();
 #endif
+        }
+
+    /* ── 4. OLED Refresh & Wi-Fi Transmission Loop (200 ms Loop) ── */
+	if ((now - s_last_oled_ms) >= 200) {
+		s_last_oled_ms = now;
+
         if (s_current_page == 0)      render_dashboard_page();
         else if (s_current_page == 1) render_compass_page();
         else if (s_current_page == 2) render_map_page();
@@ -585,6 +638,6 @@ void GENERAL_Update(void)
         else if (s_current_page == 3) render_wifi_page();
 #endif
         else if (s_current_page == 4) render_calib_page();
-
+        else if (s_current_page == 5) render_encoder_page();
 	}
 }

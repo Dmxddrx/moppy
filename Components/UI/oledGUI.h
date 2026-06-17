@@ -9,5 +9,6 @@ void render_compass_page(void);
 void render_map_page(void);
 void render_wifi_page(void);
 void render_calib_page(void);
+void render_encoder_page(void);
 
 #endif /* OLED_GUI_H */

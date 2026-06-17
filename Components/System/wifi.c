@@ -130,25 +130,30 @@ int8_t WIFI_StartUDP(const char* target_ip, uint16_t port) {
 }
 
 
-// WIFI_SendUDPData handles the tricky 2-step process of asking the ESP for permission to send, waiting for the >, and then pushing the data.
+// WIFI_SendUDPData handles the tricky 2-step process.
+// Uses standard blocking for the short setup, and DMA for the massive payload.
 int8_t WIFI_SendUDPData(const char* data) {
     char cmd[32];
     uint16_t len = strlen(data);
 
-    // 1. Tell ESP how many bytes we want to send (e.g., AT+CIPSEND=15)
+    /* Check if UART is still busy from the previous DMA transfer (Safety Catch) */
+    if (huart1.gState != HAL_UART_STATE_READY) {
+        return 0; /* Skip this cycle to prevent memory corruption */
+    }
+
+    // 1. Tell ESP how many bytes we want to send (Blocking, it's very short)
     sprintf(cmd, "AT+CIPSEND=%d\r\n", len);
     WIFI_SendCommand(cmd);
 
-    // 2. Wait for the '>' prompt from the ESP indicating it is ready
+    // 2. Wait for the '>' prompt from the ESP indicating it is ready (Takes ~1ms)
     if (WIFI_WaitForResponse(">", 5)) {
 
-        // 3. Send the actual sensor data string
-        WIFI_SendCommand(data);
+        // 3. THE DMA UPGRADE: Send the massive sensor data string in the background!
+        HAL_UART_Transmit_DMA(&huart1, (uint8_t*)data, len);
 
-        // 4. Wait for confirmation that it was sent over Wi-Fi
-        if (WIFI_WaitForResponse("SEND OK", 5)) {
-            return 1; // Success
-        }
+        // 4. Do NOT wait for "SEND OK". Instantly return so the CPU can go back
+        // to balancing Moppy's motors while the DMA controller handles the Wi-Fi!
+        return 1;
     }
     return 0; // Failed
 }

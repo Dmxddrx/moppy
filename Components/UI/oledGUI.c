@@ -1,4 +1,5 @@
 #include "oledGUI.h"
+#include "encoder.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
@@ -261,6 +262,38 @@ void render_calib_page(void) {
 
     snprintf(buf, sizeof(buf), "Mz %-5d Az %5.2f", s_last_mag.mz, s_last_imu_phys.az);
     OLED_Print(0, 40, buf);
+
+    OLED_Update();
+}
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* ENCODER & MOTOR PAGE (5)                                        */
+/* ═══════════════════════════════════════════════════════════════ */
+void render_encoder_page(void) {
+    char buf[32];
+    OLED_Clear();
+
+    /* Header */
+    OLED_Print(0, 0, "MOTOR & ENCODERS");
+    OLED_DrawLine(0, 10, 128, 10);
+
+    /* Fetch speeds (rad/s or RPM depending on your encoder.c math) */
+    float speed_L = ENCODER_GetSpeed(0);
+    float speed_R = ENCODER_GetSpeed(1);
+
+    /* Print Left Motor Data */
+    OLED_Print(0, 18, "LEFT WHEEL:");
+    snprintf(buf, sizeof(buf), "PWM: %-4d", s_disp_l_pwm);
+    OLED_Print(10, 28, buf);
+    snprintf(buf, sizeof(buf), "SPD: %5.2f", speed_L);
+    OLED_Print(64, 28, buf);
+
+    /* Print Right Motor Data */
+    OLED_Print(0, 42, "RIGHT WHEEL:");
+    snprintf(buf, sizeof(buf), "PWM: %-4d", s_disp_r_pwm);
+    OLED_Print(10, 52, buf);
+    snprintf(buf, sizeof(buf), "SPD: %5.2f", speed_R);
+    OLED_Print(64, 52, buf);
 
     OLED_Update();
 }

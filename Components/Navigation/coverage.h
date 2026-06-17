@@ -14,6 +14,10 @@ typedef enum {
 } CoverageCmd;
 
 void COVERAGE_Init(float start_heading);
+/* Telemetry Getters */
+int   COVERAGE_GetNavState(void);
+int   COVERAGE_GetActiveBCDCell(void);
+float COVERAGE_GetTargetHeading(void);
 
 /* * The Brain: Call this every 10ms.
  * It evaluates the surroundings and tells the robot what to do next.

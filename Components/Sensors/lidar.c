@@ -162,7 +162,7 @@ void Process_LiDAR_Asynchronous(void)
             s_lidar_raw[s_current_sensor_idx] = filtered_dist;
 
             /* 4. DEBOUNCE FILTER: Verify if obstacle is a real wall vs reflection ghosting */
-            if (filtered_dist > 40 && filtered_dist <= 200)
+            if (filtered_dist > 40 && filtered_dist <= 250)
             {
                 if (s_lidar_hits[s_current_sensor_idx] < 2) {
                     s_lidar_hits[s_current_sensor_idx]++;

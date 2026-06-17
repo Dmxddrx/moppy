@@ -33,7 +33,7 @@
 /* ── Feature switches ───────────────────────────────────────────*/
 #define ENABLE_OLED_DEBUG	0
 
-#define MOTOR_INIT 0
+#define MOTOR_INIT 1
 #define WIFI_BRIDGE 1
 
 /* ── OLED pages ─────────────────────────────────────────────────*/

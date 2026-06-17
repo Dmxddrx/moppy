@@ -193,3 +193,120 @@ void Map_UpdateLiDAR(Map *map, float distance_m, float sensor_angle_deg)
 		if (e2 <= dx) { err += dx; y0 += sy; }
 	}
 }
+
+
+void Map_Decompose(Map *map)
+{
+    /* Reset current cell data */
+    map->total_bcd_cells = 0;
+    memset(map->bcd_cells, 0, sizeof(map->bcd_cells));
+
+    int current_cell_idx = 0;
+    int in_open_space = 0;
+    int y_start = 0;
+
+    /* Phase 1: The Sweep-Line */
+    /* We sweep left to right across the 15x15m grid */
+    for (int x = 0; x < MAP_GRID_SIZE; x++) {
+
+		in_open_space = 0;
+
+		for (int y = 0; y < MAP_GRID_SIZE; y++) {
+
+			/* Is this space clear of walls? */
+			int is_free = (map->grid[x][y] < CELL_OBSTACLE_BASE);
+
+			/* Transition: Wall -> Open Space (Start a new block) */
+			if (is_free && !in_open_space) {
+				in_open_space = 1;
+				y_start = y;
+			}
+			/* Transition: Open Space -> Wall (End the block) */
+			else if (!is_free && in_open_space) {
+				in_open_space = 0;
+
+				if (current_cell_idx >= MAX_BCD_CELLS) break;
+
+				/* Register the cell block */
+				map->bcd_cells[current_cell_idx].id = current_cell_idx + 1;
+				map->bcd_cells[current_cell_idx].x_start = x;
+				map->bcd_cells[current_cell_idx].x_end = x;
+				map->bcd_cells[current_cell_idx].y_min = y_start;
+				map->bcd_cells[current_cell_idx].y_max = y - 1;
+				map->bcd_cells[current_cell_idx].is_cleaned = 0;
+
+				current_cell_idx++;
+			}
+		}
+
+		/* THE FIX: If we reached the edge of the map while still in open space, close the block! */
+		if (in_open_space) {
+			if (current_cell_idx >= MAX_BCD_CELLS) break;
+
+			map->bcd_cells[current_cell_idx].id = current_cell_idx + 1;
+			map->bcd_cells[current_cell_idx].x_start = x;
+			map->bcd_cells[current_cell_idx].x_end = x;
+			map->bcd_cells[current_cell_idx].y_min = y_start;
+			map->bcd_cells[current_cell_idx].y_max = MAP_GRID_SIZE - 1; /* Caps at 99 */
+			map->bcd_cells[current_cell_idx].is_cleaned = 0;
+
+			current_cell_idx++;
+		}
+
+		if (current_cell_idx >= MAX_BCD_CELLS) break;
+	}
+
+    map->total_bcd_cells = current_cell_idx;
+
+    /* Phase 2: Cell Merging (To be implemented)
+       In the Python code, 'get_adjacency_matrix' merges these 1-pixel wide
+       blocks into massive room rectangles. For the STM32, we will loop through
+       map->bcd_cells and combine any cells that share the same y_min and y_max
+       and have adjacent x coordinates.
+    */
+    /* ... (Place this right below map->total_bcd_cells = current_cell_idx;
+                inside your Map_Decompose function in mapping.c) ... */
+
+	/* Phase 2: Cell Merging (The Adjacency Matrix alternative for STM32) */
+	for (int i = 0; i < map->total_bcd_cells; i++) {
+		if (map->bcd_cells[i].id == 0) continue; /* Skip cells that were already merged and deleted */
+
+		for (int j = i + 1; j < map->total_bcd_cells; j++) {
+			if (map->bcd_cells[j].id == 0) continue;
+
+			/* Check 1: Are these two strips horizontally touching? */
+			if (map->bcd_cells[i].x_end + 1 == map->bcd_cells[j].x_start) {
+
+				/* Check 2: Do they represent the same open space?
+				   (Allowing a 1-cell / 15cm tolerance for crooked walls) */
+				if (abs(map->bcd_cells[i].y_min - map->bcd_cells[j].y_min) <= 1 &&
+					abs(map->bcd_cells[i].y_max - map->bcd_cells[j].y_max) <= 1) {
+
+					/* MERGE THEM! Stretch Cell A to encompass Cell B */
+					map->bcd_cells[i].x_end = map->bcd_cells[j].x_end;
+
+					/* Average the top and bottom boundaries for a smooth rectangle */
+					map->bcd_cells[i].y_min = (map->bcd_cells[i].y_min + map->bcd_cells[j].y_min) / 2;
+					map->bcd_cells[i].y_max = (map->bcd_cells[i].y_max + map->bcd_cells[j].y_max) / 2;
+
+					/* Mark Cell B as deleted so it is ignored */
+					map->bcd_cells[j].id = 0;
+				}
+			}
+		}
+	}
+
+	/* Phase 3: Array Compression (Clean up the empty deleted slots) */
+	int final_cell_count = 0;
+	for (int i = 0; i < map->total_bcd_cells; i++) {
+		if (map->bcd_cells[i].id != 0) {
+			/* Shift the valid cell down to close the gap */
+			map->bcd_cells[final_cell_count] = map->bcd_cells[i];
+
+			/* Re-number the ID so they are perfectly sequential (1, 2, 3...) */
+			map->bcd_cells[final_cell_count].id = final_cell_count + 1;
+			final_cell_count++;
+		}
+	}
+	map->total_bcd_cells = final_cell_count;
+}

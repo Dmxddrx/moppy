@@ -42,4 +42,6 @@ float     ODOM_GetSpeed(void);        /* scalar m/s               */
 
 void ODOM_UpdateEncoders(float v_left, float v_right, float yaw_deg, float dt);
 
+float ODOM_GetLinearSpeed(void);
+
 #endif /* ODOMETRY_H */

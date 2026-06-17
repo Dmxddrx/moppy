@@ -151,3 +151,7 @@ void ODOM_UpdateEncoders(float v_left, float v_right, float yaw_deg, float dt)
 	if (s_pose.y < -15.0f)  s_pose.y = -15.0f;
 	if (s_pose.y > 15.0f)   s_pose.y = 15.0f;
 }
+
+float ODOM_GetLinearSpeed(void) {
+    return s_speed;
+}
