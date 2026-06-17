@@ -430,11 +430,17 @@ void GENERAL_100Hz_ControlLoop(void) {
 	int bump_detected = 0;
 	int is_stuck = 0;
 	static uint16_t stuck_timer = 0;
+	static uint16_t blind_timer = 0;
 
 	if (s_is_moving) {
-		/* BUMP DETECTION: Sudden impact spike over ~0.3G (3.0 m/s^2) */
-		if (fabsf(s_last_imu_phys.ax) > 3.0f || fabsf(s_last_imu_phys.ay) > 3.0f) {
-			bump_detected = 1;
+		/* NEW: Ignore all G-force spikes for the first 500ms of acceleration */
+		if (blind_timer < 50) {
+			blind_timer++;
+		} else {
+			/* BUMP DETECTION: Sudden impact spike over ~0.3G (3.0 m/s^2) */
+			if (fabsf(s_last_imu_phys.ax) > 3.0f || fabsf(s_last_imu_phys.ay) > 16.0f) {
+				bump_detected = 1;
+			}
 		}
 
 		/* STUCK DETECTION: Wheels have power, but IMU detects zero vibration/movement */
@@ -448,7 +454,8 @@ void GENERAL_100Hz_ControlLoop(void) {
 			stuck_timer = 0; /* Reset timer if normal driving vibration returns */
 		}
 	} else {
-		stuck_timer = 0; /* Cannot be stuck if we aren't trying to move */
+		stuck_timer = 0;
+		blind_timer = 0; /* Reset blindfold whenever the robot completely stops */
 	}
 
 	int left_pwm = 0, right_pwm = 0;
@@ -456,6 +463,10 @@ void GENERAL_100Hz_ControlLoop(void) {
 
 	/* 4. Execute Route Plan */
 	s_current_cmd = COVERAGE_Update(s_current_yaw, obs_F, obs_R, obs_L, obs_B, bump_detected, is_stuck, &commanded_yaw);
+
+	if (s_current_cmd != s_prev_cmd) {
+		blind_timer = 0;
+	}
 
 	if ((s_prev_cmd == CMD_TURN_LEFT || s_prev_cmd == CMD_TURN_RIGHT) && s_current_cmd == CMD_DRIVE_FORWARD) {
 		memset((void*)s_lidar_hits, 0, sizeof(s_lidar_hits));
