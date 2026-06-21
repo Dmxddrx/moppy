@@ -14,6 +14,7 @@ typedef enum {
 	NAV_SHIFT_LANE,      /* Driving straight to shift to the next lane */
 	NAV_TURN_90_PHASE2,   /* Second 90-degree turn to complete the U-Turn */
 	NAV_WALL_FOLLOW,     /* NEW: Temporary detour around furniture */
+	NAV_HALT_BEFORE_REVERSE, /* NEW: Give the robot time to hit the brakes! */
 	NAV_ESCAPE_CORNER,    /* NEW: Your old trapped logic! */
 	NAV_TURN_LEFT_90,    /* Re-added from your old code */
 	NAV_TURN_RIGHT_90,   /* Re-added from your old code */
@@ -104,32 +105,30 @@ CoverageCmd COVERAGE_Update(float current_yaw, int obs_F, int obs_R, int obs_L, 
 
 			/* Priority 1: Hardware Stuck Failsafe */
 			if (is_stuck) {
-				s_nav_state = NAV_TRAPPED;
+					s_nav_state = NAV_TRAPPED;
 			}
-			/* Priority 2: THE OLD TRAPPED LOGIC - Cornered by furniture! */
+			/* Priority 2: Virtual Wall Hit (BCD Boundary) */
+			else if (virtual_wall_hit) {
+					s_next_state = NAV_TURN_90_PHASE1;
+					if (s_sweep_dir == 1) s_target_heading = fmodf(current_yaw + 360.0f - 90.0f, 360.0f);
+					else s_target_heading = fmodf(current_yaw + 90.0f, 360.0f);
+					s_nav_state = NAV_HALT_BEFORE_REVERSE;
+					s_pause_timer = 0;
+			}
+			/* Priority 3: Cornered by furniture! */
 			else if (obs_F && obs_L && obs_R) {
-				s_next_state = NAV_ESCAPE_CORNER; // Escape the cluster of chair legs
-				s_nav_state = NAV_REVERSE;
-				s_pause_timer = 0;
+					s_next_state = NAV_ESCAPE_CORNER;
+					s_nav_state = NAV_HALT_BEFORE_REVERSE;
+					s_pause_timer = 0;
 			}
-			/* Priority 3: A single obstacle in the way (like a trash can or table leg) */
-			else if (obs_F && !obs_L && !obs_R) {
-				/* Don't ruin the lawnmower pattern! Just curve around it. */
-				s_nav_state = NAV_WALL_FOLLOW;
-			}
-			/* Priority 4: Reached the actual main wall of the room */
-			else if (bump_detected || (obs_F && (obs_L || obs_R)) || virtual_wall_hit) {
-				/* Now we trigger the Boustrophedon U-Turn! */
-				s_next_state = NAV_TURN_90_PHASE1;
-
-				if (s_sweep_dir == 1) {
-					s_target_heading = fmodf(current_yaw + 360.0f - 90.0f, 360.0f);
-				} else {
-					s_target_heading = fmodf(current_yaw + 90.0f, 360.0f);
-				}
-
-				s_nav_state = NAV_REVERSE;
-				s_pause_timer = 0;
+			/* Priority 4: Reached ANY obstacle, wall, or bump */
+			else if (bump_detected || obs_F) {
+					/* End of the lane! Trigger the Boustrophedon U-Turn! */
+					s_next_state = NAV_TURN_90_PHASE1;
+					if (s_sweep_dir == 1) s_target_heading = fmodf(current_yaw + 360.0f - 90.0f, 360.0f);
+					else s_target_heading = fmodf(current_yaw + 90.0f, 360.0f);
+					s_nav_state = NAV_HALT_BEFORE_REVERSE;
+					s_pause_timer = 0;
 			}
 			break;
 
@@ -138,7 +137,7 @@ CoverageCmd COVERAGE_Update(float current_yaw, int obs_F, int obs_R, int obs_L, 
 			*out_target_yaw = s_target_heading;
 
 			s_reverse_timer++;
-			if (s_reverse_timer > 100) { /* 1.0s reverse */
+			if (s_reverse_timer > 200) { /* 2.0s reverse */
 				s_reverse_timer = 0;
 
 				/* SCENARIO A: Just a normal Boustrophedon U-Turn at a wall */
@@ -199,7 +198,7 @@ CoverageCmd COVERAGE_Update(float current_yaw, int obs_F, int obs_R, int obs_L, 
 					s_sweep_dir = -s_sweep_dir;
 					s_target_heading = fmodf(current_yaw + 180.0f, 360.0f);
 					s_next_state = NAV_FORWARD;
-					s_nav_state = NAV_REVERSE;
+					s_nav_state = NAV_HALT_BEFORE_REVERSE;
 				}
 			}
 			/* Normal Lane Shift: Drive parallel for 1.5 seconds */
@@ -236,7 +235,7 @@ CoverageCmd COVERAGE_Update(float current_yaw, int obs_F, int obs_R, int obs_L, 
 			*out_target_yaw = s_target_heading;
 
 			s_pause_timer++;
-			if (s_pause_timer > 30) {
+			if (s_pause_timer > 80) {
 
 				/* PHASE 3 TRIGGER: If we paused because a cell finished, pathfind to the next one! */
 				if (s_cell_complete && s_next_state == NAV_PAUSE) {
@@ -289,7 +288,9 @@ CoverageCmd COVERAGE_Update(float current_yaw, int obs_F, int obs_R, int obs_L, 
 			*out_target_yaw = s_target_heading;
 
 			if (fabsf(diff) <= 3.0f) {
-				s_nav_state = NAV_TRANSIT_DRIVE;
+				s_nav_state = NAV_PAUSE;           /* <--- CHANGED: Stop rotating */
+				s_next_state = NAV_TRANSIT_DRIVE;  /* <--- Wait 800ms, then drive */
+				s_pause_timer = 0;
 			}
 			break;
 
@@ -338,6 +339,18 @@ CoverageCmd COVERAGE_Update(float current_yaw, int obs_F, int obs_R, int obs_L, 
 					/* If we were sweeping, resume the Boustrophedon pattern */
 					s_nav_state = NAV_FORWARD;
 				}
+			}
+			break;
+
+        case NAV_HALT_BEFORE_REVERSE:
+			cmd = CMD_STOP;
+			*out_target_yaw = s_target_heading;
+			s_pause_timer++;
+
+			/* Give the motors 800ms to smoothly ramp down to 0 PWM */
+			if (s_pause_timer > 80) {
+				s_nav_state = NAV_REVERSE;
+				s_reverse_timer = 0;
 			}
 			break;
 

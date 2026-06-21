@@ -63,12 +63,17 @@ void HMC5883L_ReadRaw(HMC5883L_RawData *data)
 float HMC5883L_GetHeading(float mx, float my)
 {
     /* 1. Hard Iron Calibration (Offsets) */
-    float offset_x = 26.0f;
-    float offset_y = -139.0f;
+    float offset_x = 6.0f; // (mx max + mx min)/2.0f
+    float offset_y = -169.0f; // (my max + my min)/2.0f
 
     /* 2. Soft Iron Calibration (Scaling) */
-    float scale_x = 0.986f;
-    float scale_y = 1.014f;
+    // Note: To find scale, first find the radius (range) of each axis:
+    // range_x = (X_max - X_min) / 2.0f
+    // range_y = (Y_max - Y_min) / 2.0f
+    // avg_range = (range_x + range_y) / 2.0f
+
+    float scale_x = 0.979f; // avg_range / range_x
+    float scale_y = 1.021f; // avg_range / range_y
 
     /* Step A: Remove Hard Iron distortion (shift to center) */
     float cal_mx = mx - offset_x;

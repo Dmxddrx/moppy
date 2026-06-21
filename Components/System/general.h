@@ -54,7 +54,7 @@
 
 #define WIFI_SSID_1 "Dmx's Note20 Ultra"
 #define WIFI_PASS_1 "11111129"
-#define PC_IP_1     "10.178.78.199"
+#define PC_IP_1     "10.166.119.199"
 
 #define WIFI_SSID_2 "ENTGRA 2.5G"
 #define WIFI_PASS_2 "Entgra@110"

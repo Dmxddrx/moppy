@@ -237,6 +237,69 @@ static void test_turn_by_angle(float angle_change, int is_left) {
         HAL_Delay(10);
     }
 }
+
+/* ═══════════════════════════════════════════════════════════════ */
+/* CLOSED-LOOP STRAIGHT DRIVE HELPER (Heading Lock)                */
+/* ═══════════════════════════════════════════════════════════════ */
+static void test_drive_straight(uint32_t duration_ms, int base_pwm, int is_forward) {
+    /* 1. Let the compass stabilize to lock our starting angle */
+    for(int i=0; i<25; i++) { live_compass_delay(10); }
+    float target_yaw = s_current_yaw;
+    uint32_t start_time = HAL_GetTick();
+
+    s_current_cmd = is_forward ? CMD_DRIVE_FORWARD : CMD_REVERSE;
+    uint8_t dir = is_forward ? MOTOR_FORWARD : MOTOR_BACKWARD;
+
+    while ((HAL_GetTick() - start_time) < duration_ms) {
+        MPU6050_RawData imu;
+        HMC5883L_RawData mag;
+
+        /* Read the compass */
+        if (MPU6050_ReadRaw(&imu) == HAL_OK) {
+            HMC5883L_ReadRaw(&mag);
+            STABLE_Update(&imu, &mag, 0.01f);
+            s_current_yaw = STABLE_GetOrientation().yaw;
+        }
+
+        /* 2. Calculate how far we drifted off the straight line */
+        float heading_error = angle_diff(target_yaw, s_current_yaw);
+
+        /* 3. Proportional Correction Math (P-Controller) */
+        /* If we drift 2 degrees, it applies a PWM correction of 10 */
+        int correction = (int)(heading_error * 2.0f);
+
+        int left_pwm = base_pwm;
+        int right_pwm = base_pwm;
+
+        /* Apply the correction depending on driving direction */
+        if (is_forward) {
+            left_pwm  -= correction;
+            right_pwm += correction;
+        } else {
+            /* Steering logic is inverted when reversing! */
+            left_pwm  += correction;
+            right_pwm -= correction;
+        }
+
+        /* Safety clamps to ensure we don't exceed max timer values */
+        if (left_pwm > 800) left_pwm = 800; else if (left_pwm < 0) left_pwm = 0;
+        if (right_pwm > 800) right_pwm = 800; else if (right_pwm < 0) right_pwm = 0;
+
+        /* Send speeds to the background ramping algorithm */
+        MOTOR_Set(0, dir, left_pwm);
+        MOTOR_Set(1, dir, right_pwm);
+        MOTORPWM_Update();
+
+        render_compass_page();
+        HAL_Delay(10);
+    }
+
+    /* 4. Smoothly halt when the time is up */
+    s_current_cmd = CMD_STOP;
+    MOTOR_Set(0, MOTOR_FORWARD, 0);
+    MOTOR_Set(1, MOTOR_FORWARD, 0);
+    live_compass_delay(1000); /* Gives the PWM smooth-stop time to work */
+}
 #endif
 
 
@@ -249,7 +312,7 @@ void GENERAL_Init(void)
     OLED_Clear();
     OLED_Print(16, 10, "Moppy Cleaner");
     OLED_Print(0, 30, "DO NOT MOVE!");
-    OLED_Print(0, 45, "Calibrating IMU...");
+    OLED_Print(0, 50, "Calibrating IMU...");
     OLED_Update();
 
     BTNS_Init();
@@ -265,71 +328,86 @@ void GENERAL_Init(void)
     ENCODER_Init();
 
 #if MOTOR_INIT
-		/* ═══════════════════════════════════════════════════════════════ */
-		/* MOTOR & COMPASS LIVE TEST (PROPORTIONAL)                        */
-		/* ═══════════════════════════════════════════════════════════════ */
-		OLED_Clear();
-		OLED_Print(0, 0, "MOTOR TEST!");
-		OLED_Update();
-		HAL_Delay(1500);
+	/* ═══════════════════════════════════════════════════════════════ */
+	/* MOTOR & COMPASS LIVE TEST (PROPORTIONAL)                        */
+	/* ═══════════════════════════════════════════════════════════════ */
+    OLED_Clear();
+	OLED_Print(0, 0, "MOTOR TEST!");
+	OLED_Update();
+	HAL_Delay(1500);
 
-		int test_speed = 300;
+	int test_speed = 300;
 
-		// 1. FORWARD (2 Seconds)
-		s_current_cmd = CMD_DRIVE_FORWARD;
-		MOTOR_Set(0, MOTOR_FORWARD, test_speed);
-		MOTOR_Set(1, MOTOR_FORWARD, test_speed);
-		live_compass_delay(2000);
+	// 1. FORWARD (2 Seconds - Uncorrected placeholder)
+	s_current_cmd = CMD_DRIVE_FORWARD;
+	MOTOR_Set(0, MOTOR_FORWARD, test_speed);
+	MOTOR_Set(1, MOTOR_FORWARD, test_speed);
+	live_compass_delay(2000);
 
-		s_current_cmd = CMD_STOP;
-		MOTOR_Set(0, MOTOR_FORWARD, 0);
-		MOTOR_Set(1, MOTOR_FORWARD, 0);
-		live_compass_delay(1000);
+	s_current_cmd = CMD_STOP;
+	MOTOR_Set(0, MOTOR_FORWARD, 0);
+	MOTOR_Set(1, MOTOR_FORWARD, 0);
+	live_compass_delay(1000);
 
-		// 2. REVERSE (2 Seconds)
-		s_current_cmd = CMD_REVERSE;
-		MOTOR_Set(0, MOTOR_BACKWARD, test_speed);
-		MOTOR_Set(1, MOTOR_BACKWARD, test_speed);
-		live_compass_delay(2000);
+	// 2. REVERSE (2 Seconds - Uncorrected placeholder)
+	s_current_cmd = CMD_REVERSE;
+	MOTOR_Set(0, MOTOR_BACKWARD, test_speed);
+	MOTOR_Set(1, MOTOR_BACKWARD, test_speed);
+	live_compass_delay(2000);
 
-		// Stop to stabilize before starting the maze simulation
-		s_current_cmd = CMD_STOP;
-		MOTOR_Set(0, MOTOR_FORWARD, 0);
-		MOTOR_Set(1, MOTOR_FORWARD, 0);
-		live_compass_delay(1000);
+	s_current_cmd = CMD_STOP;
+	MOTOR_Set(0, MOTOR_FORWARD, 0);
+	MOTOR_Set(1, MOTOR_FORWARD, 0);
+	live_compass_delay(1000);
 
-		// ─── 90 DEGREE PRECISION TESTS ───
-		test_turn_by_angle(90.0f, 1);   // Turn Left 90
-		live_compass_delay(1000);
+	// ─── 90 DEGREE PRECISION TESTS ───
+	test_turn_by_angle(90.0f, 1);   // Turn Left 90
+	live_compass_delay(1000);
 
-		test_turn_by_angle(90.0f, 0);   // Turn Right 90 (Back to start)
-		live_compass_delay(1000);
+	test_turn_by_angle(90.0f, 0);   // Turn Right 90 (Back to start)
+	live_compass_delay(1000);
 
-		test_turn_by_angle(90.0f, 0);   // Turn Right 90
-		live_compass_delay(1000);
+	test_turn_by_angle(90.0f, 0);   // Turn Right 90
+	live_compass_delay(1000);
 
-		test_turn_by_angle(90.0f, 1);   // Turn Left 90 (Back to start)
-		live_compass_delay(1000);
+	test_turn_by_angle(90.0f, 1);   // Turn Left 90 (Back to start)
+	live_compass_delay(1000);
 
-		// ─── 180 DEGREE PRECISION TESTS ───
-		test_turn_by_angle(180.0f, 1);  // Turn Left 180
-		live_compass_delay(1000);
+	// ─── 180 DEGREE PRECISION TESTS ───
+	test_turn_by_angle(180.0f, 1);  // Turn Left 180
+	live_compass_delay(1000);
 
-		test_turn_by_angle(180.0f, 0);  // Turn Right 180 (Back to start)
-		live_compass_delay(1000);
+	test_turn_by_angle(180.0f, 0);  // Turn Right 180 (Back to start)
+	live_compass_delay(1000);
 
-		test_turn_by_angle(180.0f, 0);  // Turn Right 180
-		live_compass_delay(1000);
+	test_turn_by_angle(180.0f, 0);  // Turn Right 180
+	live_compass_delay(1000);
 
-		test_turn_by_angle(180.0f, 1);  // Turn Left 180 (Back to start)
-		live_compass_delay(1000);
+	test_turn_by_angle(180.0f, 1);  // Turn Left 180 (Back to start)
+	live_compass_delay(1000);
 
-		// 5. TEST COMPLETE
-		s_current_cmd = CMD_STOP;
-		MOTOR_Set(0, MOTOR_FORWARD, 0);
-		MOTOR_Set(1, MOTOR_FORWARD, 0);
-		live_compass_delay(1000);
-		/* ═══════════════════════════════════════════════════════════════ */
+	// ─── CLOSED-LOOP STRAIGHT LINE TESTS ───
+	OLED_Clear();
+	OLED_Print(0, 0, "STRAIGHT FWD!");
+	OLED_Update();
+	/* Drive straight forward at 400 PWM for exactly 10,000ms (10 seconds) */
+	test_drive_straight(10000, 400, 1);
+
+	OLED_Clear();
+	OLED_Print(0, 0, "STRAIGHT REV!");
+	OLED_Update();
+	/* Drive straight backward at 400 PWM for exactly 10,000ms (10 seconds) */
+	test_drive_straight(10000, 400, 0);
+
+	// 5. TEST COMPLETE
+	OLED_Clear();
+	OLED_Print(0, 0, "TEST COMPLETE");
+	OLED_Update();
+	s_current_cmd = CMD_STOP;
+	MOTOR_Set(0, MOTOR_FORWARD, 0);
+	MOTOR_Set(1, MOTOR_FORWARD, 0);
+	live_compass_delay(1000);
+
 #endif
 
 	LIDAR_Init();
@@ -427,6 +505,7 @@ void GENERAL_Init(void)
     s_last_oled_ms  = HAL_GetTick();
 }
 
+
 void GENERAL_100Hz_ControlLoop(void) {
     s_imu_math_ready = 0;
     static CoverageCmd s_prev_cmd = CMD_STOP;
@@ -522,7 +601,7 @@ void GENERAL_100Hz_ControlLoop(void) {
 	s_prev_cmd = s_current_cmd;
 
 	if (s_current_cmd == CMD_DRIVE_FORWARD) {
-		left_pwm = 300; right_pwm = 300;
+		left_pwm = 350; right_pwm = 350;
 	}
 	else if (s_current_cmd == CMD_REVERSE) {
 		left_pwm = -250; right_pwm = -250;
@@ -536,7 +615,7 @@ void GENERAL_100Hz_ControlLoop(void) {
 			right_pwm = 0;
 		} else {
 			int turn_speed = (int)(fabsf(heading_error) * 2.0f) + 140;
-			if (turn_speed > 280) turn_speed = 280;
+			if (turn_speed > 300) turn_speed = 300;
 
 			if (s_current_cmd == CMD_TURN_RIGHT) {
 				left_pwm = turn_speed; right_pwm = -turn_speed;
@@ -546,8 +625,8 @@ void GENERAL_100Hz_ControlLoop(void) {
 		}
 	}
 
-	if (left_pwm > 400) left_pwm = 400; else if (left_pwm < -400) left_pwm = -400;
-	if (right_pwm > 400) right_pwm = 400; else if (right_pwm < -400) right_pwm = -400;
+	if (left_pwm > 500) left_pwm = 500; else if (left_pwm < -500) left_pwm = -500;
+	if (right_pwm > 500) right_pwm = 500; else if (right_pwm < -500) right_pwm = -500;
 
 	uint8_t left_dir  = (left_pwm >= 0)  ? MOTOR_FORWARD : MOTOR_BACKWARD;
 	uint8_t right_dir = (right_pwm >= 0) ? MOTOR_FORWARD : MOTOR_BACKWARD;

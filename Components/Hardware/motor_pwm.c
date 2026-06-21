@@ -15,7 +15,7 @@
 extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim4;
 
-#define PWM_STEP 3  // change per update for smooth acceleration
+#define PWM_STEP 8  // change per update for smooth acceleration
 
 static int16_t current_pwm[MOTOR_MAX] = {0};
 static int16_t target_pwm[MOTOR_MAX]  = {0};
